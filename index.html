@@ -1,0 +1,1163 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Anchor</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+  :root{
+    --bg:#F4F5F0;
+    --surface:#FFFFFF;
+    --surface2:#E9EEE5;
+    --ink:#22302A;
+    --ink-soft:#5C6B62;
+    --line:#D8DFD4;
+    --accent:#2F6B54;
+    --accent-soft:#DCE8E1;
+    --accent-ink:#FFFFFF;
+    --amber:#B97F2A;
+    --amber-soft:#F4E7CD;
+    --amber-ink:#4A3410;
+    --bad:#A05252;
+    --shadow:0 12px 32px rgba(34,48,42,.10);
+    --display:ui-rounded,"SF Pro Rounded","Hiragino Maru Gothic ProN","Arial Rounded MT Bold","Segoe UI",system-ui,sans-serif;
+    --body:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,"Helvetica Neue",sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#141B17;
+      --surface:#1D2721;
+      --surface2:#25322B;
+      --ink:#E7EDE7;
+      --ink-soft:#9DACA1;
+      --line:#31413A;
+      --accent:#7FB89D;
+      --accent-soft:#25382F;
+      --accent-ink:#0F1F18;
+      --amber:#D9A44E;
+      --amber-soft:#3A3020;
+      --amber-ink:#F0DDB8;
+      --bad:#C88585;
+      --shadow:0 12px 32px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#141B17;
+    --surface:#1D2721;
+    --surface2:#25322B;
+    --ink:#E7EDE7;
+    --ink-soft:#9DACA1;
+    --line:#31413A;
+    --accent:#7FB89D;
+    --accent-soft:#25382F;
+    --accent-ink:#0F1F18;
+    --amber:#D9A44E;
+    --amber-soft:#3A3020;
+    --amber-ink:#F0DDB8;
+    --bad:#C88585;
+    --shadow:0 12px 32px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  [hidden]{display:none !important}
+  html,body{height:100%}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--body);
+    font-size:17px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  #app{
+    max-width:430px;
+    margin:0 auto;
+    min-height:100dvh;
+    display:flex;
+    flex-direction:column;
+    padding:max(16px,env(safe-area-inset-top)) 20px max(24px,env(safe-area-inset-bottom));
+  }
+  .screen{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    animation:screenIn .32s ease both;
+  }
+  @keyframes screenIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion: reduce){
+    .screen{animation:none}
+    *{transition-duration:.01ms !important;animation-duration:.01ms !important}
+    .breath-circle{transition:none !important}
+  }
+
+  .topbar{display:flex;align-items:center;gap:10px;min-height:44px;margin-bottom:6px}
+  .back{
+    background:none;border:none;color:var(--ink-soft);font-family:var(--body);
+    font-size:16px;padding:10px 10px 10px 0;cursor:pointer;border-radius:10px;
+  }
+  .back:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible{
+    outline:3px solid var(--accent);outline-offset:2px;
+  }
+  .step-dots{display:flex;gap:6px;margin-left:auto}
+  .step-dots i{width:7px;height:7px;border-radius:50%;background:var(--line)}
+  .step-dots i.on{background:var(--accent)}
+
+  .eyebrow{
+    font-family:var(--display);font-size:13px;font-weight:700;
+    letter-spacing:.12em;text-transform:uppercase;color:var(--accent);
+    margin-bottom:10px;
+  }
+  h1{
+    font-family:var(--display);font-weight:800;font-size:30px;line-height:1.18;
+    text-wrap:balance;letter-spacing:-.01em;margin-bottom:10px;
+  }
+  h2{
+    font-family:var(--display);font-weight:800;font-size:24px;line-height:1.22;
+    text-wrap:balance;margin-bottom:8px;
+  }
+  .sub{color:var(--ink-soft);margin-bottom:20px;max-width:34ch}
+  .grow{flex:1}
+  .stack{display:flex;flex-direction:column;gap:12px}
+
+  .chips{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px}
+  .chip{
+    font-family:var(--body);font-size:16px;color:var(--ink);
+    background:var(--surface);border:1.5px solid var(--line);
+    border-radius:999px;padding:12px 18px;cursor:pointer;
+    transition:background .15s,border-color .15s,transform .1s;
+    text-align:left;
+  }
+  .chip:active{transform:scale(.97)}
+  .chip.on{background:var(--accent-soft);border-color:var(--accent);color:var(--ink)}
+  .chip.on::before{content:"✓ ";color:var(--accent);font-weight:700}
+
+  .btn{
+    font-family:var(--display);font-weight:800;font-size:18px;
+    border:none;border-radius:20px;padding:18px 20px;cursor:pointer;
+    width:100%;transition:transform .1s,opacity .15s;
+  }
+  .btn:active{transform:scale(.98)}
+  .btn-primary{background:var(--accent);color:var(--accent-ink)}
+  .btn-amber{background:var(--amber);color:#FFF8EC}
+  .btn-ghost{background:var(--surface);color:var(--ink);border:1.5px solid var(--line)}
+  .btn-quiet{background:none;color:var(--ink-soft);font-weight:600;font-size:16px;padding:12px}
+  .btn[disabled]{opacity:.45;cursor:default}
+
+  .bigbtn{
+    background:var(--accent);color:var(--accent-ink);
+    border:none;border-radius:28px;cursor:pointer;width:100%;
+    padding:34px 24px;box-shadow:var(--shadow);
+    font-family:var(--display);font-weight:800;font-size:24px;
+    letter-spacing:.06em;line-height:1.3;
+    transition:transform .12s;
+  }
+  .bigbtn:active{transform:scale(.98)}
+  .bigbtn small{
+    display:block;font-size:14px;font-weight:600;letter-spacing:.02em;
+    opacity:.85;margin-top:8px;text-transform:none;
+  }
+
+  .card{
+    background:var(--surface);border:1.5px solid var(--line);border-radius:20px;
+    padding:20px;box-shadow:var(--shadow);
+  }
+  .note{
+    background:var(--surface2);border-radius:16px;padding:14px 16px;
+    color:var(--ink-soft);font-size:15px;
+  }
+  .note strong{color:var(--ink)}
+
+  input[type=text],textarea{
+    width:100%;font-family:var(--body);font-size:17px;color:var(--ink);
+    background:var(--surface);border:1.5px solid var(--line);border-radius:16px;
+    padding:14px 16px;
+  }
+  textarea{resize:none;min-height:88px}
+  input::placeholder,textarea::placeholder{color:var(--ink-soft);opacity:.8}
+
+  /* intensity slider */
+  .intensity-num{
+    font-family:var(--display);font-weight:800;font-size:76px;line-height:1;
+    text-align:center;color:var(--accent);font-variant-numeric:tabular-nums;
+    margin:18px 0 6px;
+  }
+  .intensity-label{text-align:center;color:var(--ink-soft);margin-bottom:26px;min-height:24px}
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:100%;height:14px;border-radius:999px;
+    background:linear-gradient(to right,var(--accent-soft),var(--accent));
+    outline-offset:6px;margin-bottom:6px;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;width:44px;height:44px;border-radius:50%;
+    background:var(--surface);border:4px solid var(--accent);box-shadow:var(--shadow);cursor:pointer;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:40px;height:40px;border-radius:50%;
+    background:var(--surface);border:4px solid var(--accent);box-shadow:var(--shadow);cursor:pointer;
+  }
+  .range-ends{display:flex;justify-content:space-between;color:var(--ink-soft);font-size:14px;margin-bottom:8px}
+
+  /* breathing */
+  .breath-wrap{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;
+    min-height:340px;
+  }
+  .breath-circle{
+    width:150px;height:150px;border-radius:50%;
+    background:radial-gradient(circle at 38% 32%,var(--accent-soft),var(--accent));
+    box-shadow:0 0 0 18px var(--accent-soft),var(--shadow);
+    transform:scale(.72);
+  }
+  .breath-phase{
+    font-family:var(--display);font-weight:800;font-size:22px;margin-top:44px;
+    min-height:30px;text-align:center;
+  }
+  .breath-count{color:var(--ink-soft);font-size:15px;margin-top:6px;font-variant-numeric:tabular-nums}
+
+  /* control sort */
+  .sort-card{
+    background:var(--surface);border:1.5px solid var(--line);border-radius:22px;
+    padding:34px 22px;box-shadow:var(--shadow);text-align:center;
+    font-family:var(--display);font-weight:800;font-size:22px;line-height:1.3;
+    min-height:150px;display:flex;align-items:center;justify-content:center;
+    animation:cardIn .28s ease both;
+  }
+  @keyframes cardIn{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}
+  .sort-btns{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}
+  .sort-btns .btn{font-size:16px;padding:16px 10px}
+  .col-lists{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .col{background:var(--surface);border:1.5px solid var(--line);border-radius:18px;padding:14px;min-width:0}
+  .col h3{font-family:var(--display);font-size:14px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
+  .col.mine h3{color:var(--accent)}
+  .col.not h3{color:var(--ink-soft)}
+  .col ul{list-style:none;display:flex;flex-direction:column;gap:8px}
+  .col li{font-size:15px;line-height:1.35;padding:8px 10px;border-radius:10px;background:var(--surface2)}
+  .col.not li{color:var(--ink-soft)}
+
+  /* final action screen */
+  .action-final{
+    flex:1;display:flex;flex-direction:column;justify-content:center;text-align:center;gap:14px;
+  }
+  .action-word{
+    font-family:var(--display);font-weight:800;font-size:34px;line-height:1.2;
+    text-wrap:balance;color:var(--ink);
+  }
+  .action-tag{
+    align-self:center;background:var(--amber-soft);color:var(--amber-ink);
+    font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:.1em;
+    text-transform:uppercase;border-radius:999px;padding:8px 16px;
+  }
+
+  /* home */
+  .home-head{margin:26px 0 8px}
+  .brand{
+    font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:.02em;
+  }
+  .brand::before{content:"";display:inline-block;width:11px;height:11px;border-radius:50%;
+    background:var(--accent);margin-right:9px}
+  .home-greet{color:var(--ink-soft);font-size:15px;margin-top:4px}
+  .home-links{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:18px}
+  .home-links button{
+    background:none;border:none;color:var(--ink-soft);font-family:var(--body);
+    font-size:14px;padding:10px 8px;cursor:pointer;text-decoration:underline;
+    text-decoration-color:var(--line);text-underline-offset:4px;border-radius:8px;
+  }
+
+  /* history */
+  .sess-row{display:flex;align-items:baseline;gap:10px;padding:14px 2px;border-bottom:1px solid var(--line)}
+  .sess-row:last-child{border-bottom:none}
+  .sess-when{color:var(--ink-soft);font-size:13px;white-space:nowrap}
+  .sess-what{flex:1;font-size:15px;min-width:0}
+  .sess-what small{display:block;color:var(--ink-soft)}
+  .sess-delta{font-family:var(--display);font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .sess-delta.down{color:var(--accent)}
+  .sess-delta.up{color:var(--bad)}
+
+  .footer-note{color:var(--ink-soft);font-size:13px;text-align:center;margin-top:18px}
+  .spacer{height:12px}
+  .divider{border:none;border-top:1px solid var(--line);margin:18px 0}
+</style>
+
+<div id="app"></div>
+
+<script>
+"use strict";
+/* ============ storage ============ */
+const store = {
+  get(k, f){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : f; } catch(e){ return f; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); } catch(e){} },
+  del(k){ try{ localStorage.removeItem(k); } catch(e){} }
+};
+let profile  = store.get('anchor.profile', null);
+let sessions = store.get('anchor.sessions', []);
+let scores   = store.get('anchor.toolScores', {});
+let meta     = store.get('anchor.meta', {});
+
+/* ============ content ============ */
+const SITUATIONS = [
+  ['new-people','Meeting new people'],['parties','Parties & hangouts'],['dates','Dates'],
+  ['speaking','Speaking in front of a group'],['tests','Tests & exams'],['work','Work'],
+  ['alone','Being alone'],['flights','Flights'],['driving','Driving'],
+  ['medical','Doctors & medical visits'],['future','Worries about the future'],
+  ['rumination','Thoughts that keep repeating'],['online','Something on my phone or online']
+];
+const BODY_SIGNS = ['Racing heart','Tight chest','Hard to breathe','Shaky hands','Sweating',
+  'Stomach in knots','Dizzy or floaty','Frozen in place','Can’t sit still'];
+const THOUGHTS = ['Everyone will judge me','I’ll embarrass myself','Something bad is about to happen',
+  'I can’t handle this','I need to get out of here','They’re mad at me',
+  'What if it all goes wrong','I said something stupid'];
+const TENDENCIES = ['I avoid the situation','I leave early','I call or text someone',
+  'I ask for reassurance','I check things again and again','I freeze up','I scroll to escape'];
+const HELPS = ['Slowing my breathing','Talking it through','Doing something with my hands',
+  'Planning what I can actually do','Moving my body','Being distracted for a while'];
+const NOT_HELPS = ['Being told “don’t worry”','Being told to calm down',
+  'Trying to force the thought away','Googling it','Avoiding it altogether'];
+
+const CONTEXTS = [
+  ['before','I’m before something that stresses me'],
+  ['during','I’m in the middle of it right now'],
+  ['after','It already happened — I keep replaying it'],
+  ['online','It’s something on my phone or online'],
+  ['performance','I’m before a test, interview, or performance'],
+  ['unknown','It just rose — I don’t know why']
+];
+const CTX_LABEL = {before:'Before something', during:'In the middle of it', after:'Replaying it',
+  online:'Phone / online', performance:'Test / interview', unknown:'It just rose'};
+
+const BASE_SEQ = {
+  before:      ['control','fear','action'],
+  during:      ['body','control','action'],
+  after:       ['loop','thought','action'],
+  online:      ['loop','thought','action'],
+  performance: ['body','fear','action'],
+  unknown:     ['body','thought','action']
+};
+const TOOL_NAME = {body:'Breathing', fear:'Worst case → coping', thought:'Thought check',
+  loop:'Loop detector', control:'In my control', action:'One small step'};
+
+const CONTROL_CARDS = {
+  before: [
+    ['Showing up',1],['Saying hi first',1],['Talking to one person',1],['Staying 20 more minutes',1],
+    ['What I wear',1],['What others think of me',0],['Whether everyone likes me',0],
+    ['Who else will be there',0],['Whether there’s an awkward silence',0]
+  ],
+  during: [
+    ['My next breath',1],['Saying one sentence',1],['Asking someone a question',1],
+    ['Staying 5 more minutes',1],['Where I stand or sit',1],
+    ['What they think of me',0],['Whether someone looks at me',0],['Other people’s moods',0]
+  ],
+  performance: [
+    ['Starting with the first question',1],['Preparing what I can',1],['Taking one slow breath first',1],
+    ['Asking for clarification',1],['The exact questions asked',0],['The interviewer’s mood',0],
+    ['The final grade',0],['How everyone else does',0]
+  ],
+  after: [
+    ['What I do next',1],['Whether I reach out or let it rest',1],['What I tell myself about it',1],
+    ['Being kind to myself tonight',1],['What already happened',0],['What they thought of it',0]
+  ],
+  online: [
+    ['What I do next',1],['Whether I reply, and how',1],['Putting the phone away for a while',1],
+    ['Whether they reply',0],['What people said about it',0],['What already happened',0]
+  ],
+  unknown: [
+    ['My breathing right now',1],['Drinking some water',1],['Stepping outside for a minute',1],
+    ['Texting someone I trust',1],['Why the feeling showed up',0],['How long the feeling lasts',0]
+  ]
+};
+
+const ACTIONS = {
+  before: ['Walk in','Say hi to one person','Ask someone one question','Get ready and head out','Stay 10 more minutes'],
+  during: ['Say one sentence','Ask a question','Stay 5 more minutes','Drop your shoulders and unclench','Get some water and come back'],
+  after: ['Write it down once, then close the note','Send one honest message','Do one thing you enjoy for 10 minutes','Move your body for 5 minutes'],
+  online: ['Put the phone face-down for 10 minutes','Mute the thread for tonight','Reply once, simply — or not at all','Do one offline thing for 10 minutes'],
+  performance: ['Start with the first question','Read the first page','Walk into the room','Say your first line'],
+  unknown: ['Drink some water, slowly','Step outside for two minutes','Stretch for one minute','Text someone you trust one line']
+};
+
+const FEAR_PICKS = {
+  before: ['I’ll have no one to talk to','I’ll say something stupid','Everyone will notice I’m nervous','I’ll want to leave right away'],
+  during: ['They can all see I’m anxious','I’ll go blank','There’ll be an awkward silence','I’ll embarrass myself'],
+  after: ['They think I’m weird now','I ruined it','They’re talking about me'],
+  online: ['Everyone saw it','They’re ignoring me on purpose','People are judging what I posted'],
+  performance: ['I’ll blank out completely','I’ll fail','They’ll see I’m not good enough'],
+  unknown: ['Something bad is coming','I’m losing control','This feeling won’t stop']
+};
+const COPES = ['Ask for help','Take a break, then try again','Apologize once and move on',
+  'Leave, regroup, come back','Laugh it off','Talk to someone I trust','Try a different way'];
+
+const BALANCED = [
+  'I might feel awkward — and I can handle awkward.',
+  'I’m predicting, not knowing.',
+  'This is uncomfortable, not dangerous.',
+  'Even if it goes badly, I’ll deal with it then.',
+  'People mostly think about themselves, not me.',
+  'One moment doesn’t decide everything.'
+];
+
+/* ============ engine ============ */
+function sc(ctx, tool){ return (scores[ctx] && typeof scores[ctx][tool] === 'number') ? scores[ctx][tool] : 0; }
+const ALL_MIDS = ['body','fear','thought','loop','control'];
+
+function composeSession(ctx, intensity){
+  let seq = BASE_SEQ[ctx].slice();
+  if(intensity >= 7 && seq[0] !== 'body') seq = ['body'].concat(seq.filter(t => t !== 'body'));
+  let mids = seq.filter(t => t !== 'action');
+  const bodyFirst = mids[0] === 'body';
+  let rest = bodyFirst ? mids.slice(1) : mids.slice();
+  rest.sort((a,b) => sc(ctx,b) - sc(ctx,a));
+  rest = rest.map(t => {
+    if(sc(ctx,t) <= -2){
+      const alt = ALL_MIDS.filter(m => !mids.includes(m))
+        .sort((a,b) => sc(ctx,b) - sc(ctx,a))[0];
+      if(alt && sc(ctx,alt) > sc(ctx,t)) return alt;
+    }
+    return t;
+  });
+  rest = rest.filter((t,i) => rest.indexOf(t) === i);
+  if(intensity >= 7) rest = rest.slice(0,1);
+  mids = (bodyFirst ? ['body'] : []).concat(rest);
+  return mids.concat(['action']);
+}
+
+function recordSession(){
+  const s = S.sess;
+  const delta = (typeof s.after === 'number') ? (s.intensity - s.after) : 0;
+  const feelPts = s.feel === 'better' ? 2 : (s.feel === 'worse' ? -2 : 0);
+  const pts = Math.max(-4, Math.min(6, delta + feelPts));
+  if(!scores[s.context]) scores[s.context] = {};
+  s.used.forEach(t => {
+    if(t === 'action') return;
+    const cur = scores[s.context][t] || 0;
+    scores[s.context][t] = Math.max(-6, Math.min(6, cur + pts));
+  });
+  sessions.unshift({
+    at: Date.now(), context: s.context, before: s.intensity,
+    after: (typeof s.after === 'number') ? s.after : null,
+    feel: s.feel || null, tools: s.used.slice(), action: s.chosenAction || null
+  });
+  if(sessions.length > 80) sessions = sessions.slice(0,80);
+  store.set('anchor.sessions', sessions);
+  store.set('anchor.toolScores', scores);
+}
+
+/* ============ intake config ============ */
+const INTAKE_STEPS = [
+  {key:'name', type:'name', title:'First — what should I call you?',
+   sub:'Just a first name, or skip it. Everything you share stays on this device.'},
+  {key:'situations', type:'chips', multi:true, options:SITUATIONS.map(s=>s[1]),
+   title:'In which situations would you like me to help you?', sub:'Pick anything that sounds familiar.'},
+  {key:'body', type:'chips', multi:true, options:BODY_SIGNS,
+   title:'When anxiety rises, what happens in your body?', sub:'This helps me catch it with you early.'},
+  {key:'thoughts', type:'chips', multi:true, options:THOUGHTS,
+   title:'Which thoughts tend to show up?', sub:'No judging — these are the anxiety talking.'},
+  {key:'tendencies', type:'chips', multi:true, options:TENDENCIES,
+   title:'What do you usually do when it rises?', sub:'Whatever’s true. It all makes sense.'},
+  {key:'helps', type:'chips', multi:true, options:HELPS,
+   title:'What usually helps, even a little?', sub:''},
+  {key:'nothelps', type:'chips', multi:true, options:NOT_HELPS,
+   title:'And what doesn’t help — or makes it worse?', sub:'I’ll steer away from these.'},
+  {key:'goal', type:'text', title:'If anxiety ran your life a little less…',
+   sub:'…what’s one thing you’d want to be able to do?',
+   placeholder:'e.g. go to parties without planning my escape'}
+];
+
+/* ============ state ============ */
+let S = {
+  screen: meta.onboarded ? 'home' : 'welcome',
+  intake: null, sess: null, tool: null,
+  breathTimers: []
+};
+
+function startIntake(){
+  S.intake = { step:0, data:{ name:'', situations:[], body:[], thoughts:[], tendencies:[], helps:[], nothelps:[], goal:'' } };
+  go('intake');
+}
+function startSession(ctx, intensity, seqOverride){
+  S.sess = {
+    context: ctx, intensity: intensity,
+    seq: seqOverride || composeSession(ctx, intensity),
+    i: 0, used: [], chosenAction: null, after: null, feel: null, saved: false
+  };
+  openTool(S.sess.seq[0]);
+}
+function openTool(tool){
+  S.tool = { name: tool, step: 0, data: {} };
+  if(S.sess && !S.sess.used.includes(tool)) S.sess.used.push(tool);
+  go('tool');
+}
+function nextTool(){
+  const s = S.sess;
+  s.i++;
+  if(s.i < s.seq.length) openTool(s.seq[s.i]);
+  else go('debrief');
+}
+
+/* ============ render helpers ============ */
+function esc(str){
+  return String(str == null ? '' : str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function chips(options, selected, act){
+  return '<div class="chips">' + options.map((o,i) =>
+    '<button class="chip' + (selected.includes(o) ? ' on' : '') + '" data-act="' + act + '" data-val="' + i + '">' + esc(o) + '</button>'
+  ).join('') + '</div>';
+}
+function dots(n, on){
+  let h = '<div class="step-dots">';
+  for(let i = 0; i < n; i++) h += '<i class="' + (i <= on ? 'on' : '') + '"></i>';
+  return h + '</div>';
+}
+function topbar(backAct, dotsHtml){
+  return '<div class="topbar">' +
+    (backAct ? '<button class="back" data-act="' + backAct + '">← Back</button>' : '') +
+    (dotsHtml || '') + '</div>';
+}
+function sliderBlock(id, val){
+  return '<div class="intensity-num" id="' + id + '-num">' + val + '</div>' +
+    '<div class="intensity-label" id="' + id + '-label">' + intensityWord(val) + '</div>' +
+    '<div class="range-ends"><span>calm</span><span>overwhelming</span></div>' +
+    '<input type="range" id="' + id + '" min="0" max="10" step="1" value="' + val + '" aria-label="Anxiety level from 0 to 10">';
+}
+function intensityWord(v){
+  if(v <= 2) return 'barely there';
+  if(v <= 4) return 'noticeable';
+  if(v <= 6) return 'strong';
+  if(v <= 8) return 'really strong';
+  return 'overwhelming';
+}
+function bindSlider(id){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.addEventListener('input', () => {
+    document.getElementById(id + '-num').textContent = el.value;
+    document.getElementById(id + '-label').textContent = intensityWord(+el.value);
+  });
+}
+
+/* ============ screens ============ */
+const SCREENS = {};
+
+SCREENS.welcome = () => `
+  <div class="grow"></div>
+  <div class="eyebrow">Anchor</div>
+  <h1>For the moment anxiety starts to rise.</h1>
+  <p class="sub">You won’t have to choose from a menu of exercises. Anchor gets to know you, picks what to try in the moment, and learns what actually works for you.</p>
+  <div class="note"><strong>A quick, honest note:</strong> Anchor is a self-help tool — not a diagnosis and not a replacement for therapy. If you’re in crisis in the US, call or text <strong>988</strong>.</div>
+  <div class="grow"></div>
+  <div class="stack">
+    <button class="btn btn-primary" data-act="startIntake">Let’s get to know each other</button>
+    <button class="btn btn-quiet" data-act="skipIntake">Skip for now</button>
+  </div>`;
+
+SCREENS.intake = () => {
+  const st = INTAKE_STEPS[S.intake.step];
+  const d = S.intake.data;
+  let bodyHtml = '';
+  if(st.type === 'chips'){
+    bodyHtml = chips(st.options, d[st.key], 'chip');
+  } else if(st.type === 'name'){
+    bodyHtml = '<input type="text" id="intake-input" placeholder="Your name (optional)" value="' + esc(d.name) + '" autocomplete="off">';
+  } else {
+    bodyHtml = '<textarea id="intake-input" placeholder="' + esc(st.placeholder || '') + '">' + esc(d.goal) + '</textarea>';
+  }
+  return topbar(S.intake.step > 0 ? 'intakeBack' : 'goHomeSkip', dots(INTAKE_STEPS.length, S.intake.step)) +
+    '<h2>' + st.title + '</h2>' +
+    (st.sub ? '<p class="sub">' + st.sub + '</p>' : '<div class="spacer"></div>') +
+    bodyHtml +
+    '<div class="grow"></div><div class="spacer"></div>' +
+    '<button class="btn btn-primary" data-act="intakeNext">' +
+    (S.intake.step === INTAKE_STEPS.length - 1 ? 'Done — build my profile' : 'Continue') + '</button>';
+};
+
+SCREENS.home = () => {
+  const name = profile && profile.name ? profile.name : '';
+  const n = sessions.length;
+  return `
+  <div class="home-head">
+    <div class="brand">Anchor</div>
+    <div class="home-greet">${name ? 'Hey, ' + esc(name) + '.' : 'Hey.'}${n >= 3 ? ' You’ve worked through this ' + n + ' times — the tools are becoming yours.' : ''}</div>
+  </div>
+  <div class="grow"></div>
+  <button class="bigbtn" data-act="rising">MY ANXIETY IS RISING<small>two quick taps, then we start</small></button>
+  <div class="spacer"></div>
+  <div class="stack">
+    <button class="btn btn-amber" data-act="justHelp">JUST HELP ME NOW</button>
+    <button class="btn btn-ghost" data-act="inLoop">I’M IN A LOOP</button>
+  </div>
+  <div class="grow"></div>
+  <div class="home-links">
+    <button data-act="goProfile">My profile</button>
+    <button data-act="goHistory">What works for me</button>
+    <button data-act="goAbout">About &amp; safety</button>
+  </div>`;
+};
+
+SCREENS.checkinContext = () => topbar('goHome') +
+  '<div class="eyebrow">Okay. I’m with you.</div>' +
+  '<h2>What’s happening right now?</h2>' +
+  '<div class="spacer"></div>' +
+  '<div class="stack">' + CONTEXTS.map(c =>
+    '<button class="btn btn-ghost" style="text-align:left;font-weight:600;font-family:var(--body);font-size:16px" data-act="pickContext" data-val="' + c[0] + '">' + c[1] + '</button>'
+  ).join('') + '</div>';
+
+SCREENS.checkinIntensity = () => topbar('rising') +
+  '<h2>How strong is it right now?</h2>' +
+  '<div class="grow"></div>' + sliderBlock('intensity', 6) + '<div class="grow"></div>' +
+  '<button class="btn btn-primary" data-act="beginSession">Start</button>';
+
+/* ---- tool dispatcher ---- */
+SCREENS.tool = () => TOOL_VIEWS[S.tool.name]();
+
+function toolHeader(eyebrow){
+  const s = S.sess;
+  const pos = s ? (s.i + 1) + ' of ' + s.seq.length : '';
+  return topbar('exitSession', s ? '<div class="step-dots">' +
+    s.seq.map((t,i) => '<i class="' + (i <= s.i ? 'on' : '') + '"></i>').join('') + '</div>' : '') +
+    '<div class="eyebrow">' + eyebrow + (pos ? ' · ' + pos : '') + '</div>';
+}
+
+const TOOL_VIEWS = {};
+
+/* BODY — breathing */
+TOOL_VIEWS.body = () => toolHeader('Body first') +
+  '<h2>Follow the circle.</h2>' +
+  '<div class="breath-wrap">' +
+    '<div class="breath-circle" id="bcircle"></div>' +
+    '<div class="breath-phase" id="bphase">Get comfortable…</div>' +
+    '<div class="breath-count" id="bcount"></div>' +
+  '</div>' +
+  '<div class="stack" id="bdone" hidden>' +
+    '<button class="btn btn-ghost" data-act="breatheAgain">One more round</button>' +
+    '<button class="btn btn-primary" data-act="toolDone">I’m ready to continue</button>' +
+  '</div>' +
+  '<div class="stack" id="bskip"><button class="btn btn-quiet" data-act="toolDone">Skip breathing</button></div>';
+
+function clearBreath(){ S.breathTimers.forEach(clearTimeout); S.breathTimers = []; }
+function runBreathing(){
+  clearBreath();
+  const circle = document.getElementById('bcircle');
+  const phase = document.getElementById('bphase');
+  const count = document.getElementById('bcount');
+  if(!circle) return;
+  const CYCLES = 5, IN = 4000, OUT = 6000;
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let t = 900;
+  S.breathTimers.push(setTimeout(() => { phase.textContent = 'Ready…'; }, 0));
+  for(let c = 0; c < CYCLES; c++){
+    S.breathTimers.push(setTimeout(() => {
+      phase.textContent = 'Breathe in through your nose';
+      count.textContent = 'round ' + (c + 1) + ' of ' + CYCLES;
+      if(!reduced){ circle.style.transition = 'transform ' + IN + 'ms cubic-bezier(.4,0,.4,1)'; circle.style.transform = 'scale(1.18)'; }
+      else { circle.style.opacity = '1'; }
+    }, t));
+    t += IN;
+    S.breathTimers.push(setTimeout(() => {
+      phase.textContent = 'Slowly out through your mouth';
+      if(!reduced){ circle.style.transition = 'transform ' + OUT + 'ms cubic-bezier(.45,0,.55,1)'; circle.style.transform = 'scale(.72)'; }
+      else { circle.style.opacity = '.55'; }
+    }, t));
+    t += OUT;
+  }
+  S.breathTimers.push(setTimeout(() => {
+    phase.textContent = 'Well done.';
+    count.textContent = '';
+    const done = document.getElementById('bdone'), skip = document.getElementById('bskip');
+    if(done) done.hidden = false;
+    if(skip) skip.hidden = true;
+  }, t + 200));
+}
+
+/* FEAR */
+TOOL_VIEWS.fear = () => {
+  const st = S.tool.step, d = S.tool.data, ctx = S.sess.context;
+  const head = toolHeader('Look at it straight');
+  if(st === 0){
+    const picks = (FEAR_PICKS[ctx] || FEAR_PICKS.unknown)
+      .concat(profile && profile.thoughts && profile.thoughts.length ? profile.thoughts.slice(0,3) : []);
+    const uniq = picks.filter((p,i) => picks.indexOf(p) === i);
+    return head + '<h2>What are you afraid will happen?</h2>' +
+      '<p class="sub">Name it. That alone takes some of its power.</p>' +
+      chips(uniq, d.fear ? [d.fear] : [], 'fearPick') +
+      '<input type="text" id="fear-input" placeholder="…or say it your way" autocomplete="off">' +
+      '<div class="grow"></div><div class="spacer"></div>' +
+      '<button class="btn btn-primary" data-act="fearNext">Continue</button>';
+  }
+  if(st === 1){
+    return head + '<h2>If that actually happened — what would you do?</h2>' +
+      '<p class="sub">Not “it won’t happen.” If it did — how would you handle it?</p>' +
+      chips(COPES, d.copes || [], 'copePick') +
+      '<div class="grow"></div>' +
+      '<button class="btn btn-primary" data-act="fearNext">Continue</button>';
+  }
+  if(st === 2){
+    return head + '<h2>And what would your very first step be?</h2>' +
+      '<div class="spacer"></div>' +
+      '<input type="text" id="fear-step" placeholder="e.g. take a breath and ask for a minute" autocomplete="off">' +
+      '<div class="grow"></div>' +
+      '<button class="btn btn-primary" data-act="fearNext">Continue</button>';
+  }
+  return head + '<div class="grow"></div>' +
+    '<div class="card" style="text-align:center">' +
+      '<div class="eyebrow" style="margin-bottom:14px">The part worth keeping</div>' +
+      '<h2 style="margin-bottom:0">Even if something I don’t want happens — I can handle it.</h2>' +
+    '</div>' +
+    '<div class="grow"></div>' +
+    '<button class="btn btn-primary" data-act="toolDone">Continue</button>';
+};
+
+/* THOUGHT */
+TOOL_VIEWS.thought = () => {
+  const st = S.tool.step, d = S.tool.data, ctx = S.sess.context;
+  const head = toolHeader('A thought is not a fact');
+  if(st === 0){
+    const picks = (profile && profile.thoughts && profile.thoughts.length ? profile.thoughts : [])
+      .concat(FEAR_PICKS[ctx] || []).concat(THOUGHTS.slice(0,3));
+    const uniq = picks.filter((p,i) => picks.indexOf(p) === i).slice(0,7);
+    return head + '<h2>Which thought is loudest right now?</h2>' +
+      chips(uniq, d.thought ? [d.thought] : [], 'thoughtPick') +
+      '<input type="text" id="thought-input" placeholder="…or type it" autocomplete="off">' +
+      '<div class="grow"></div><div class="spacer"></div>' +
+      '<button class="btn btn-primary" data-act="thoughtNext">Continue</button>';
+  }
+  if(st === 1){
+    return head + '<h2>Is that a fact — or a prediction?</h2>' +
+      (d.thought ? '<div class="note">“' + esc(d.thought) + '”</div><div class="spacer"></div>' : '') +
+      '<div class="grow"></div><div class="stack">' +
+      '<button class="btn btn-ghost" data-act="thoughtKind" data-val="prediction">It’s a prediction</button>' +
+      '<button class="btn btn-ghost" data-act="thoughtKind" data-val="unsure">I’m not sure</button>' +
+      '<button class="btn btn-ghost" data-act="thoughtKind" data-val="fact">It’s a fact — it really happened</button>' +
+      '</div><div class="grow"></div>';
+  }
+  if(st === 2 && d.kind === 'fact'){
+    return head + '<h2>Okay. Facts can be handled.</h2>' +
+      '<p class="sub">No need to argue with what’s real — what’s one thing you could do about the part that’s actually real?</p>' +
+      '<input type="text" id="fact-step" placeholder="one doable thing" autocomplete="off">' +
+      '<div class="grow"></div>' +
+      '<button class="btn btn-primary" data-act="thoughtNext">Continue</button>';
+  }
+  if(st === 2){
+    return head + '<h2>What says it might not be true?</h2>' +
+      '<p class="sub">Tap anything that’s honestly the case.</p>' +
+      chips(['It hasn’t actually happened before','I’ve gotten through this before',
+        'People mostly think about themselves','I’m guessing, not knowing',
+        'I always predict the worst — and it’s rarely the worst'], d.evidence || [], 'evPick') +
+      '<div class="grow"></div>' +
+      '<button class="btn btn-primary" data-act="thoughtNext">Continue</button>';
+  }
+  return head + '<h2>Pick a more balanced version.</h2>' +
+    '<p class="sub">Not “think positive” — just more honest than the anxiety’s version.</p>' +
+    chips(BALANCED, d.balanced ? [d.balanced] : [], 'balPick') +
+    '<div class="grow"></div>' +
+    '<button class="btn btn-primary" data-act="toolDone">Continue</button>';
+};
+
+/* LOOP */
+TOOL_VIEWS.loop = () => {
+  const st = S.tool.step;
+  const head = toolHeader('Spot the loop');
+  if(st === 0){
+    return head + '<h2>Have you already thought about this — more than once?</h2>' +
+      '<div class="grow"></div><div class="stack">' +
+      '<button class="btn btn-ghost" data-act="loopA" data-val="many">Yes — again and again</button>' +
+      '<button class="btn btn-ghost" data-act="loopA" data-val="few">A few times</button>' +
+      '<button class="btn btn-ghost" data-act="loopA" data-val="first">This is the first time</button>' +
+      '</div><div class="grow"></div>';
+  }
+  if(st === 1){
+    return head + '<h2>Since the last time — has any <em>new</em> information shown up?</h2>' +
+      '<div class="grow"></div><div class="stack">' +
+      '<button class="btn btn-ghost" data-act="loopB" data-val="no">No — same thought, another lap</button>' +
+      '<button class="btn btn-ghost" data-act="loopB" data-val="yes">Yes, something actually new</button>' +
+      '</div><div class="grow"></div>';
+  }
+  if(st === 2){
+    return head + '<div class="grow"></div>' +
+      '<div class="card" style="text-align:center">' +
+        '<h2>This is the anxiety loop — not a new problem to solve.</h2>' +
+        '<p class="sub" style="margin:10px auto 0">You don’t have to erase the thought. Just notice it: <em>that’s the loop again.</em> You’ve already done this lap.</p>' +
+      '</div>' +
+      '<div class="grow"></div>' +
+      (S.sess.seq.length === 1
+        ? '<div class="stack">' +
+          '<button class="btn btn-primary" data-act="loopBridge" data-val="action">One small action instead</button>' +
+          '<button class="btn btn-ghost" data-act="loopBridge" data-val="control">Sort what’s in my control</button>' +
+          '<button class="btn btn-quiet" data-act="loopOkay">I’m okay now</button></div>'
+        : '<button class="btn btn-primary" data-act="toolDone">Continue</button>');
+  }
+  return head + '<div class="grow"></div>' +
+    '<div class="card" style="text-align:center">' +
+      '<h2>Then it deserves one honest look — not a loop.</h2>' +
+      '<p class="sub" style="margin:10px auto 0">Let’s look at it once, properly, and then decide what’s yours to do.</p>' +
+    '</div>' +
+    '<div class="grow"></div>' +
+    '<button class="btn btn-primary" data-act="loopToThought">Look at it once</button>';
+};
+
+/* CONTROL */
+TOOL_VIEWS.control = () => {
+  const d = S.tool.data;
+  const head = toolHeader('Where does your energy go?');
+  if(!d.cards){
+    d.cards = (CONTROL_CARDS[S.sess.context] || CONTROL_CARDS.unknown).map(c => c[0]);
+    d.idx = 0; d.mine = []; d.not = [];
+  }
+  if(d.idx < d.cards.length){
+    return head + '<p class="sub" style="margin-bottom:6px">Sort each one. Card ' + (d.idx + 1) + ' of ' + d.cards.length + '.</p>' +
+      '<div class="grow"></div>' +
+      '<div class="sort-card">' + esc(d.cards[d.idx]) + '</div>' +
+      '<div class="sort-btns">' +
+        '<button class="btn btn-primary" data-act="sortCard" data-val="mine">In my control</button>' +
+        '<button class="btn btn-ghost" data-act="sortCard" data-val="not">Not in my control</button>' +
+      '</div>' +
+      '<div class="grow"></div>' +
+      '<button class="btn btn-quiet" data-act="sortSkip">skip this one</button>';
+  }
+  return head + '<h2>Here’s the split.</h2>' +
+    '<p class="sub">Your energy goes to the left column. The right one? Not yours to solve right now — if something happens, you’ll deal with it then.</p>' +
+    '<div class="col-lists">' +
+      '<div class="col mine"><h3>In my control</h3><ul>' +
+        (d.mine.length ? d.mine.map(x => '<li>' + esc(x) + '</li>').join('') : '<li>—</li>') + '</ul></div>' +
+      '<div class="col not"><h3>Not in my control</h3><ul>' +
+        (d.not.length ? d.not.map(x => '<li>' + esc(x) + '</li>').join('') : '<li>—</li>') + '</ul></div>' +
+    '</div>' +
+    '<div class="grow"></div><div class="spacer"></div>' +
+    '<button class="btn btn-primary" data-act="toolDone">Continue</button>';
+};
+
+/* ACTION */
+TOOL_VIEWS.action = () => {
+  const d = S.tool.data;
+  const head = toolHeader('One small step');
+  let opts = (ACTIONS[S.sess.context] || ACTIONS.unknown).slice();
+  const ctrl = S.sess.controlMine || [];
+  ctrl.slice(0,2).forEach(c => { if(!opts.includes(c)) opts.push(c); });
+  if(profile && profile.goal) opts.push('One tiny step toward: ' + profile.goal);
+  return head + '<h2>What’s one small thing you can do now — that’s in your control?</h2>' +
+    chips(opts, d.action ? [d.action] : [], 'actionPick') +
+    '<input type="text" id="action-input" placeholder="…or your own" autocomplete="off">' +
+    '<div class="grow"></div><div class="spacer"></div>' +
+    '<button class="btn btn-amber" data-act="actionChosen">This one</button>';
+};
+
+/* debrief + commit */
+SCREENS.debrief = () => topbar() +
+  '<div class="eyebrow">Quick check before you go</div>' +
+  '<h2>How strong is the anxiety now?</h2>' +
+  sliderBlock('after', Math.max(0, S.sess.intensity - 1)) +
+  '<div class="spacer"></div>' +
+  '<h2 style="font-size:19px">Compared to when you opened Anchor?</h2>' +
+  '<div class="spacer"></div>' +
+  '<div class="stack">' +
+    '<button class="btn btn-ghost" data-act="feel" data-val="better">A bit better</button>' +
+    '<button class="btn btn-ghost" data-act="feel" data-val="same">About the same</button>' +
+    '<button class="btn btn-ghost" data-act="feel" data-val="worse">Worse</button>' +
+  '</div><div class="grow"></div>';
+
+SCREENS.commit = () => {
+  const a = S.sess.chosenAction;
+  return '<div class="action-final">' +
+    '<div class="action-tag">Your one step</div>' +
+    '<div class="action-word">' + esc(a) + '</div>' +
+    '<p class="sub" style="margin:6px auto 0;text-align:center">Now put the phone down and go do it.<br>That’s the whole point — you, not the app.</p>' +
+  '</div>' +
+  '<button class="btn btn-quiet" data-act="goHome">close</button>';
+};
+
+SCREENS.calm = () => '<div class="action-final">' +
+  '<div class="action-tag">Nice work</div>' +
+  '<div class="action-word">You spotted the loop yourself.</div>' +
+  '<p class="sub" style="margin:6px auto 0;text-align:center">That skill is yours now — with or without the app.</p>' +
+  '</div>' +
+  '<button class="btn btn-quiet" data-act="goHome">close</button>';
+
+/* history */
+SCREENS.history = () => {
+  let rows = sessions.slice(0,20).map(s => {
+    const dte = new Date(s.at);
+    const when = (dte.getMonth() + 1) + '/' + dte.getDate();
+    const delta = (s.after != null) ? s.before - s.after : null;
+    const dHtml = delta == null ? '' :
+      '<span class="sess-delta ' + (delta > 0 ? 'down' : (delta < 0 ? 'up' : '')) + '">' +
+      s.before + ' → ' + s.after + '</span>';
+    return '<div class="sess-row"><span class="sess-when">' + when + '</span>' +
+      '<span class="sess-what">' + esc(CTX_LABEL[s.context] || s.context) +
+      '<small>' + s.tools.filter(t => t !== 'action').map(t => TOOL_NAME[t]).join(' · ') + '</small></span>' +
+      dHtml + '</div>';
+  }).join('');
+  return topbar('goHome') +
+    '<h2>What works for me</h2>' +
+    '<p class="sub">' + insightLine() + '</p>' +
+    (sessions.length ? '<div class="card" style="padding:6px 16px">' + rows + '</div>'
+      : '<div class="note">Nothing here yet. Next time anxiety rises, open Anchor — each session teaches it what helps <em>you</em>.</div>') +
+    '<div class="grow"></div>';
+};
+function insightLine(){
+  let best = null;
+  Object.keys(scores).forEach(ctx => {
+    Object.keys(scores[ctx]).forEach(t => {
+      const v = scores[ctx][t];
+      if(v > 0 && (!best || v > best.v)) best = {ctx, t, v};
+    });
+  });
+  if(best) return TOOL_NAME[best.t] + ' has helped you most when it’s “' +
+    (CTX_LABEL[best.ctx] || best.ctx).toLowerCase() + '.” I’ll lead with it there.';
+  if(sessions.length) return 'A few more sessions and I’ll know which tools work best for you, where.';
+  return 'Your sessions will show up here.';
+}
+
+/* profile */
+SCREENS.profile = () => {
+  const p = profile;
+  const line = (label, arr) => arr && arr.length ?
+    '<p style="margin-bottom:10px"><strong>' + label + ':</strong> <span style="color:var(--ink-soft)">' + arr.map(esc).join(' · ') + '</span></p>' : '';
+  return topbar('goHome') +
+    '<h2>' + (p && p.name ? esc(p.name) + '’s profile' : 'My profile') + '</h2>' +
+    '<p class="sub">This is how Anchor decides what to try with you. It stays on this device only.</p>' +
+    (p ? '<div class="card" style="font-size:15px">' +
+      line('Situations', p.situations) + line('In my body', p.body) +
+      line('Typical thoughts', p.thoughts) + line('I tend to', p.tendencies) +
+      line('Usually helps', p.helps) + line('Doesn’t help', p.nothelps) +
+      (p.goal ? '<p><strong>I want to be able to:</strong> <span style="color:var(--ink-soft)">' + esc(p.goal) + '</span></p>' : '') +
+      '</div>'
+    : '<div class="note">No profile yet — Anchor is working generically. A two-minute intake makes it personal.</div>') +
+    '<div class="grow"></div><div class="stack">' +
+    '<button class="btn btn-ghost" data-act="startIntake">' + (p ? 'Redo the intake' : 'Do the intake') + '</button>' +
+    '<button class="btn btn-quiet" data-act="eraseAsk">Erase all my data</button></div>';
+};
+
+SCREENS.erase = () => topbar('goProfile') +
+  '<h2>Erase everything?</h2>' +
+  '<p class="sub">Profile, history, and what Anchor has learned about you — gone from this device. This can’t be undone.</p>' +
+  '<div class="grow"></div><div class="stack">' +
+  '<button class="btn btn-ghost" data-act="eraseYes" style="color:var(--bad);border-color:var(--bad)">Yes, erase it all</button>' +
+  '<button class="btn btn-primary" data-act="goProfile">Keep my data</button></div>';
+
+SCREENS.about = () => topbar('goHome') +
+  '<h2>About Anchor</h2>' +
+  '<div class="stack" style="gap:14px">' +
+  '<p class="sub" style="margin:0;max-width:none">Anchor is a real-time companion for the moment anxiety starts to rise. It doesn’t hand you a menu — it learns your pattern and picks what to try: body first, then the fear, the thought, the loop, what’s in your control, and always one small action at the end.</p>' +
+  '<div class="note"><strong>What Anchor is not:</strong> it doesn’t diagnose anything and it isn’t a replacement for therapy or professional care.</div>' +
+  '<div class="note"><strong>If you’re in crisis</strong> or having thoughts of hurting yourself: in the US, call or text <strong>988</strong> (Suicide &amp; Crisis Lifeline), anytime.</div>' +
+  '<div class="note"><strong>Privacy:</strong> everything stays in this browser, on this device. Nothing is sent anywhere.</div>' +
+  '<div class="note"><strong>The goal</strong> is that you need Anchor less over time — the tools become yours.</div>' +
+  '</div><div class="grow"></div>';
+
+/* ============ router + actions ============ */
+const app = document.getElementById('app');
+
+function go(screen){
+  clearBreath();
+  S.screen = screen;
+  app.innerHTML = '<div class="screen">' + SCREENS[screen]() + '</div>';
+  if(screen === 'checkinIntensity') bindSlider('intensity');
+  if(screen === 'debrief') bindSlider('after');
+  if(screen === 'tool' && S.tool.name === 'body') runBreathing();
+  window.scrollTo(0,0);
+}
+function rerenderTool(){ go('tool'); }
+
+function readInput(id){
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
+
+const ACTS = {
+  /* nav */
+  goHome(){ go('home'); },
+  goHomeSkip(){ meta.onboarded = true; store.set('anchor.meta', meta); go('home'); },
+  goProfile(){ go('profile'); },
+  goHistory(){ go('history'); },
+  goAbout(){ go('about'); },
+  skipIntake(){ meta.onboarded = true; store.set('anchor.meta', meta); go('home'); },
+  startIntake(){ startIntake(); },
+  exitSession(){ go('home'); },
+
+  /* intake */
+  chip(val, el){
+    const st = INTAKE_STEPS[S.intake.step];
+    const opt = st.options[+val];
+    const arr = S.intake.data[st.key];
+    const i = arr.indexOf(opt);
+    if(i >= 0) arr.splice(i,1); else arr.push(opt);
+    el.classList.toggle('on');
+  },
+  intakeBack(){ S.intake.step--; go('intake'); },
+  intakeNext(){
+    const st = INTAKE_STEPS[S.intake.step];
+    if(st.type === 'name') S.intake.data.name = readInput('intake-input');
+    if(st.type === 'text') S.intake.data.goal = readInput('intake-input');
+    if(S.intake.step < INTAKE_STEPS.length - 1){ S.intake.step++; go('intake'); }
+    else {
+      profile = S.intake.data;
+      store.set('anchor.profile', profile);
+      meta.onboarded = true; store.set('anchor.meta', meta);
+      go('home');
+    }
+  },
+
+  /* home entries */
+  rising(){ go('checkinContext'); },
+  pickContext(val){ S.pendingCtx = val; go('checkinIntensity'); },
+  beginSession(){
+    const v = +((document.getElementById('intensity') || {}).value || 6);
+    startSession(S.pendingCtx || 'unknown', v);
+  },
+  justHelp(){
+    let ctx = 'unknown';
+    if(sessions.length) ctx = sessions[0].context;
+    startSession(ctx, 8);
+  },
+  inLoop(){
+    S.sess = { context:'after', intensity:6, seq:['loop'], i:0, used:['loop'],
+      chosenAction:null, after:null, feel:null, saved:false };
+    S.tool = { name:'loop', step:0, data:{} };
+    go('tool');
+  },
+
+  /* body */
+  breatheAgain(){ const d = document.getElementById('bdone'); if(d) d.hidden = true; runBreathing(); },
+  toolDone(){
+    if(S.tool.name === 'control') S.sess.controlMine = (S.tool.data.mine || []).slice();
+    nextTool();
+  },
+
+  /* fear */
+  fearPick(val, el){
+    document.querySelectorAll('[data-act=fearPick]').forEach(c => c.classList.remove('on'));
+    el.classList.add('on');
+    S.tool.data.fear = el.textContent.replace(/^✓ /,'');
+  },
+  copePick(val, el){
+    const d = S.tool.data; d.copes = d.copes || [];
+    const opt = COPES[+val];
+    const i = d.copes.indexOf(opt);
+    if(i >= 0) d.copes.splice(i,1); else d.copes.push(opt);
+    el.classList.toggle('on');
+  },
+  fearNext(){
+    const d = S.tool.data;
+    if(S.tool.step === 0){
+      const typed = readInput('fear-input');
+      if(typed) d.fear = typed;
+    }
+    if(S.tool.step === 2) d.firstStep = readInput('fear-step');
+    S.tool.step++;
+    rerenderTool();
+  },
+
+  /* thought */
+  thoughtPick(val, el){
+    document.querySelectorAll('[data-act=thoughtPick]').forEach(c => c.classList.remove('on'));
+    el.classList.add('on');
+    S.tool.data.thought = el.textContent.replace(/^✓ /,'');
+  },
+  thoughtNext(){
+    const d = S.tool.data;
+    if(S.tool.step === 0){
+      const typed = readInput('thought-input');
+      if(typed) d.thought = typed;
+      S.tool.step = 1;
+    } else if(S.tool.step === 2 && d.kind === 'fact'){
+      d.factStep = readInput('fact-step');
+      S.tool.step = 3;
+    } else {
+      S.tool.step++;
+    }
+    rerenderTool();
+  },
+  thoughtKind(val){ S.tool.data.kind = val; S.tool.step = 2; rerenderTool(); },
+  evPick(val, el){
+    const d = S.tool.data; d.evidence = d.evidence || [];
+    const t = el.textContent.replace(/^✓ /,'');
+    const i = d.evidence.indexOf(t);
+    if(i >= 0) d.evidence.splice(i,1); else d.evidence.push(t);
+    el.classList.toggle('on');
+  },
+  balPick(val, el){
+    document.querySelectorAll('[data-act=balPick]').forEach(c => c.classList.remove('on'));
+    el.classList.add('on');
+    S.tool.data.balanced = BALANCED[+val];
+  },
+
+  /* loop */
+  loopA(val){
+    if(val === 'first'){ S.tool.step = 3; }
+    else S.tool.step = 1;
+    rerenderTool();
+  },
+  loopB(val){
+    if(val === 'yes'){ S.tool.step = 3; }
+    else S.tool.step = 2;
+    rerenderTool();
+  },
+  loopToThought(){
+    if(S.sess.seq.length === 1){
+      S.sess.seq = ['loop','thought','action'];
+    } else if(!S.sess.seq.includes('thought')){
+      S.sess.seq.splice(S.sess.i + 1, 0, 'thought');
+    }
+    nextTool();
+  },
+  loopBridge(val){
+    S.sess.seq = ['loop', val === 'control' ? 'control' : 'action'];
+    if(val === 'control') S.sess.seq.push('action');
+    nextTool();
+  },
+  loopOkay(){
+    S.sess.after = Math.max(0, S.sess.intensity - 2);
+    S.sess.feel = 'better';
+    recordSession();
+    go('calm');
+  },
+
+  /* control */
+  sortCard(val){
+    const d = S.tool.data;
+    d[val].push(d.cards[d.idx]);
+    d.idx++;
+    rerenderTool();
+  },
+  sortSkip(){ S.tool.data.idx++; rerenderTool(); },
+
+  /* action */
+  actionPick(val, el){
+    document.querySelectorAll('[data-act=actionPick]').forEach(c => c.classList.remove('on'));
+    el.classList.add('on');
+    S.tool.data.action = el.textContent.replace(/^✓ /,'');
+  },
+  actionChosen(){
+    const typed = readInput('action-input');
+    const a = typed || S.tool.data.action;
+    if(!a) return;
+    S.sess.chosenAction = a;
+    go('debrief');
+  },
+
+  /* debrief */
+  feel(val){
+    S.sess.after = +((document.getElementById('after') || {}).value || S.sess.intensity);
+    S.sess.feel = val;
+    recordSession();
+    go(S.sess.chosenAction ? 'commit' : 'calm');
+  },
+
+  /* erase */
+  eraseAsk(){ go('erase'); },
+  eraseYes(){
+    ['anchor.profile','anchor.sessions','anchor.toolScores','anchor.meta'].forEach(store.del);
+    profile = null; sessions = []; scores = {}; meta = {};
+    S = { screen:'welcome', intake:null, sess:null, tool:null, breathTimers:[] };
+    go('welcome');
+  }
+};
+
+app.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if(!el) return;
+  const fn = ACTS[el.dataset.act];
+  if(fn) fn(el.dataset.val, el);
+});
+
+go(S.screen);
+</script>
+
+</html>
