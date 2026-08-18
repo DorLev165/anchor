@@ -140,6 +140,9 @@
   .btn-ghost{background:var(--surface);color:var(--ink);border:1.5px solid var(--line)}
   .btn-quiet{background:none;color:var(--ink-soft);font-weight:600;font-size:16px;padding:12px}
   .btn[disabled]{opacity:.45;cursor:default}
+  .btn-list{text-align:left;font-weight:700;font-size:17px}
+  .btn-list small{display:block;font-family:var(--body);font-weight:400;font-size:13px;color:var(--ink-soft);margin-top:2px}
+  .btn-primary.btn-list small,.btn-primary small{color:var(--accent-ink);opacity:.8}
 
   .bigbtn{
     background:var(--accent);color:var(--accent-ink);
@@ -164,6 +167,11 @@
     color:var(--ink-soft);font-size:15px;
   }
   .note strong{color:var(--ink)}
+  .note a{color:var(--accent);font-weight:700;text-decoration:underline;text-underline-offset:3px}
+  .warn{
+    background:var(--amber-soft);color:var(--amber-ink);border-radius:14px;
+    padding:12px 14px;font-size:15px;margin-bottom:12px;animation:cardIn .25s ease both;
+  }
 
   input[type=text],textarea{
     width:100%;font-family:var(--body);font-size:17px;color:var(--ink);
@@ -206,10 +214,13 @@
     box-shadow:0 0 0 18px var(--accent-soft),var(--shadow);
     transform:scale(.72);
   }
+  .breath-circle.mini{width:96px;height:96px;box-shadow:0 0 0 12px var(--accent-soft)}
+  .mini-wrap{text-align:center;margin:16px 0 4px;display:flex;flex-direction:column;align-items:center}
   .breath-phase{
     font-family:var(--display);font-weight:800;font-size:22px;margin-top:44px;
     min-height:30px;text-align:center;
   }
+  .breath-phase.mini{font-size:17px;margin-top:20px;min-height:24px}
   .breath-count{color:var(--ink-soft);font-size:15px;margin-top:6px;font-variant-numeric:tabular-nums}
 
   /* control sort */
@@ -270,6 +281,10 @@
   .sess-delta{font-family:var(--display);font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
   .sess-delta.down{color:var(--accent)}
   .sess-delta.up{color:var(--bad)}
+  .stepmark{font-family:var(--display);font-weight:800;white-space:nowrap;font-size:15px}
+  .stepmark.yes{color:var(--accent)}
+  .stepmark.partly{color:var(--amber)}
+  .stepmark.no{color:var(--ink-soft)}
 
   .footer-note{color:var(--ink-soft);font-size:13px;text-align:center;margin-top:18px}
   .spacer{height:12px}
@@ -286,201 +301,194 @@ const store = {
   set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); } catch(e){} },
   del(k){ try{ localStorage.removeItem(k); } catch(e){} }
 };
-let profile  = store.get('anchor.profile', null);
-let sessions = store.get('anchor.sessions', []);
-let scores   = store.get('anchor.toolScores', {});
+let profile  = store.get('anchor.profile2', null);
+let sessions = store.get('anchor.sessions2', []);
+let scores   = store.get('anchor.pathScores', {});
 let meta     = store.get('anchor.meta', {});
+let pending  = store.get('anchor.pending', null);
 
-/* ============ content ============ */
-const SITUATIONS = [
-  ['new-people','Meeting new people'],['parties','Parties & hangouts'],['dates','Dates'],
-  ['speaking','Speaking in front of a group'],['tests','Tests & exams'],['work','Work'],
-  ['alone','Being alone'],['flights','Flights'],['driving','Driving'],
-  ['medical','Doctors & medical visits'],['future','Worries about the future'],
-  ['rumination','Thoughts that keep repeating'],['online','Something on my phone or online']
+/* ============ situations (the aunt's 8 categories, her content) ============ */
+const SIT_ORDER = ['social','test','performance','interview','flight','date','conflict','other'];
+const SIT = {
+  social: {
+    label:'Social situation', hint:'party, hangout, new people, school, group chat…',
+    fears:['I won’t know what to say','I’ll be awkward','They’ll judge me','I’ll be left out','They’ll notice I’m anxious','I’ll say something stupid'],
+    mine:['Showing up','Saying hello','Asking someone a question','Staying instead of immediately leaving','What I choose to do next'],
+    not:['What they think of me','Whether everyone likes me','What somebody else says','Whether there are awkward moments'],
+    steps:['Walk in','Say hello to one person','Ask one question','Stay for another five minutes'],
+    want:'Go — and actually be there'
+  },
+  test: {
+    label:'Test / exam', hint:'exam, quiz, school pressure…',
+    fears:['I’ll fail','My mind will go blank','I won’t finish in time','I won’t remember what I studied','I’ll panic during the test'],
+    mine:['Reading the question carefully','Starting with what I know','Moving on if I’m stuck','Bringing my attention back to the test'],
+    not:['The exact questions','The final result right now','How everybody else performs'],
+    steps:['Open the test','Read the first question','Start with what you know'],
+    want:'Take the test'
+  },
+  performance: {
+    label:'Presentation / performance', hint:'public speaking, audition, sports, stage…',
+    fears:['I’ll freeze','I’ll forget what I wanted to say','They’ll notice I’m nervous','I’ll make a mistake','I’ll embarrass myself'],
+    mine:['Starting','Speaking at my own pace','Focusing on my first point','Continuing even if I make a mistake'],
+    not:['What the audience thinks','Whether somebody notices I’m nervous','Other people’s reactions'],
+    steps:['Walk up','Take your position','Say your first line'],
+    want:'Get up and do it'
+  },
+  interview: {
+    label:'Job interview', hint:'interview, application, work…',
+    fears:['I won’t know what to say','I’ll look nervous','I’ll give a bad answer','They won’t like me','I won’t get the job'],
+    mine:['Showing up','Listening to the question','Answering as clearly as I can','Taking a moment to think','Asking a question'],
+    not:['Who else applied','What the interviewer ultimately thinks','Whether I’m selected'],
+    steps:['Enter the room or the call','Say hello','Answer the first question'],
+    want:'Do the interview'
+  },
+  flight: {
+    label:'Flight / travel', hint:'flying, airports, being far from home…',
+    fears:['Something will happen to the plane','Turbulence will scare me','I’ll panic and won’t be able to leave','I’ll lose control','I won’t be able to handle how I feel'],
+    mine:['Going to the gate','Boarding','Staying in my seat','Using my breathing if it helps','Bringing my attention back to the present moment'],
+    not:['Turbulence','The weather','Every sensation in my body','Flying the plane myself'],
+    steps:['Walk to the gate','Board the plane','Sit down','Focus on the next minute, not the whole flight'],
+    want:'Take the flight',
+    evenIf:'I can’t control everything that happens. I can handle the next moment.'
+  },
+  date: {
+    label:'Date / relationship', hint:'a date, a message, waiting for a reply…',
+    fears:['They won’t like me','There’ll be an awkward silence','I won’t know what to say','I’ll be rejected','I sent a message and they haven’t answered','I think I said something wrong'],
+    mine:['Showing up','Being genuine','Asking a question','Sending one message rather than repeatedly checking','Giving the other person space','What I do next'],
+    not:['Whether they like me','When they reply','What they think','Whether they want another date'],
+    steps:['Walk into the date','Ask one genuine question','Send one honest message','Put the phone away and let the message sit'],
+    want:'Show up — or say what I mean'
+  },
+  conflict: {
+    label:'Difficult conversation', hint:'conflict, confrontation, saying a hard thing…',
+    fears:['They’ll get angry','I’ll upset them','I won’t know what to say','They’ll reject me','The conversation will go badly'],
+    mine:['What I say','How I say it','Being clear','Listening','Setting a boundary if needed'],
+    not:['Their reaction','Whether they agree','What they feel','What they say'],
+    steps:['Start the conversation','Say the first sentence','Say clearly what you need to say'],
+    want:'Have the conversation'
+  },
+  other: {
+    label:'Something else', hint:'tell me in a few words',
+    fears:['Something bad will happen','I won’t be able to handle it','I’ll lose control','I don’t even know — it just feels bad'],
+    mine:['What I do next','My next small step','Where I put my attention right now','Asking for help if I need it'],
+    not:['The future','Other people’s reactions','What already happened','Every feeling in my body'],
+    steps:['Take one slow breath and stand up','Drink some water, slowly','Step outside for two minutes','Do the next small thing in front of you'],
+    want:'Do the thing anyway'
+  }
+};
+const EVEN_IF_DEFAULT = 'Even if something I don’t want happens — I can handle what comes next.';
+
+/* map free text ("Something else") to the closest situation */
+const TEXT_MAP = [
+  ['test',        /\b(test|exam|quiz|midterm|finals?|grade|study|studying)\b/i],
+  ['interview',   /\b(interview|job|hiring|application|applied?)\b/i],
+  ['performance', /\b(present|presentation|speech|perform|performance|stage|audition|recital|tryout|game|match)\b/i],
+  ['flight',      /\b(fly|flying|flight|plane|airplane|airport|turbulence|travel|trip)\b/i],
+  ['date',        /\b(date|dating|crush|boyfriend|girlfriend|partner|ghost(ed|ing)?|repl(y|ied|ies)|left on read|text(ed)? back|answer(ed|ing)?|respond(ed)?|message[ds]?)\b/i],
+  ['conflict',    /\b(fight|fighting|argu\w*|confront\w*|conflict|angry|mad at|yell\w*|boss|breakup|broke up)\b/i],
+  ['social',      /\b(part(y|ies)|friends?|people|social|school|class|group|hang(ing)?( ?out)?|meet(ing)? new)\b/i]
 ];
-const BODY_SIGNS = ['Racing heart','Tight chest','Hard to breathe','Shaky hands','Sweating',
-  'Stomach in knots','Dizzy or floaty','Frozen in place','Can’t sit still'];
-const THOUGHTS = ['Everyone will judge me','I’ll embarrass myself','Something bad is about to happen',
-  'I can’t handle this','I need to get out of here','They’re mad at me',
-  'What if it all goes wrong','I said something stupid'];
-const TENDENCIES = ['I avoid the situation','I leave early','I call or text someone',
-  'I ask for reassurance','I check things again and again','I freeze up','I scroll to escape'];
-const HELPS = ['Slowing my breathing','Talking it through','Doing something with my hands',
-  'Planning what I can actually do','Moving my body','Being distracted for a while'];
-const NOT_HELPS = ['Being told “don’t worry”','Being told to calm down',
-  'Trying to force the thought away','Googling it','Avoiding it altogether'];
-
-const CONTEXTS = [
-  ['before','I’m before something that stresses me'],
-  ['during','I’m in the middle of it right now'],
-  ['after','It already happened — I keep replaying it'],
-  ['online','It’s something on my phone or online'],
-  ['performance','I’m before a test, interview, or performance'],
-  ['unknown','It just rose — I don’t know why']
-];
-const CTX_LABEL = {before:'Before something', during:'In the middle of it', after:'Replaying it',
-  online:'Phone / online', performance:'Test / interview', unknown:'It just rose'};
-
-const BASE_SEQ = {
-  before:      ['control','fear','action'],
-  during:      ['body','control','action'],
-  after:       ['loop','thought','action'],
-  online:      ['loop','thought','action'],
-  performance: ['body','fear','action'],
-  unknown:     ['body','thought','action']
-};
-const TOOL_NAME = {body:'Breathing', fear:'Worst case → coping', thought:'Thought check',
-  loop:'Loop detector', control:'In my control', action:'One small step'};
-
-const CONTROL_CARDS = {
-  before: [
-    ['Showing up',1],['Saying hi first',1],['Talking to one person',1],['Staying 20 more minutes',1],
-    ['What I wear',1],['What others think of me',0],['Whether everyone likes me',0],
-    ['Who else will be there',0],['Whether there’s an awkward silence',0]
-  ],
-  during: [
-    ['My next breath',1],['Saying one sentence',1],['Asking someone a question',1],
-    ['Staying 5 more minutes',1],['Where I stand or sit',1],
-    ['What they think of me',0],['Whether someone looks at me',0],['Other people’s moods',0]
-  ],
-  performance: [
-    ['Starting with the first question',1],['Preparing what I can',1],['Taking one slow breath first',1],
-    ['Asking for clarification',1],['The exact questions asked',0],['The interviewer’s mood',0],
-    ['The final grade',0],['How everyone else does',0]
-  ],
-  after: [
-    ['What I do next',1],['Whether I reach out or let it rest',1],['What I tell myself about it',1],
-    ['Being kind to myself tonight',1],['What already happened',0],['What they thought of it',0]
-  ],
-  online: [
-    ['What I do next',1],['Whether I reply, and how',1],['Putting the phone away for a while',1],
-    ['Whether they reply',0],['What people said about it',0],['What already happened',0]
-  ],
-  unknown: [
-    ['My breathing right now',1],['Drinking some water',1],['Stepping outside for a minute',1],
-    ['Texting someone I trust',1],['Why the feeling showed up',0],['How long the feeling lasts',0]
-  ]
-};
-
-const ACTIONS = {
-  before: ['Walk in','Say hi to one person','Ask someone one question','Get ready and head out','Stay 10 more minutes'],
-  during: ['Say one sentence','Ask a question','Stay 5 more minutes','Drop your shoulders and unclench','Get some water and come back'],
-  after: ['Write it down once, then close the note','Send one honest message','Do one thing you enjoy for 10 minutes','Move your body for 5 minutes'],
-  online: ['Put the phone face-down for 10 minutes','Mute the thread for tonight','Reply once, simply — or not at all','Do one offline thing for 10 minutes'],
-  performance: ['Start with the first question','Read the first page','Walk into the room','Say your first line'],
-  unknown: ['Drink some water, slowly','Step outside for two minutes','Stretch for one minute','Text someone you trust one line']
-};
-
-const FEAR_PICKS = {
-  before: ['I’ll have no one to talk to','I’ll say something stupid','Everyone will notice I’m nervous','I’ll want to leave right away'],
-  during: ['They can all see I’m anxious','I’ll go blank','There’ll be an awkward silence','I’ll embarrass myself'],
-  after: ['They think I’m weird now','I ruined it','They’re talking about me'],
-  online: ['Everyone saw it','They’re ignoring me on purpose','People are judging what I posted'],
-  performance: ['I’ll blank out completely','I’ll fail','They’ll see I’m not good enough'],
-  unknown: ['Something bad is coming','I’m losing control','This feeling won’t stop']
-};
-const COPES = ['Ask for help','Take a break, then try again','Apologize once and move on',
-  'Leave, regroup, come back','Laugh it off','Talk to someone I trust','Try a different way'];
-
-const BALANCED = [
-  'I might feel awkward — and I can handle awkward.',
-  'I’m predicting, not knowing.',
-  'This is uncomfortable, not dangerous.',
-  'Even if it goes badly, I’ll deal with it then.',
-  'People mostly think about themselves, not me.',
-  'One moment doesn’t decide everything.'
-];
-
-/* ============ engine ============ */
-function sc(ctx, tool){ return (scores[ctx] && typeof scores[ctx][tool] === 'number') ? scores[ctx][tool] : 0; }
-const ALL_MIDS = ['body','fear','thought','loop','control'];
-
-function composeSession(ctx, intensity){
-  let seq = BASE_SEQ[ctx].slice();
-  if(intensity >= 7 && seq[0] !== 'body') seq = ['body'].concat(seq.filter(t => t !== 'body'));
-  let mids = seq.filter(t => t !== 'action');
-  const bodyFirst = mids[0] === 'body';
-  let rest = bodyFirst ? mids.slice(1) : mids.slice();
-  rest.sort((a,b) => sc(ctx,b) - sc(ctx,a));
-  rest = rest.map(t => {
-    if(sc(ctx,t) <= -2){
-      const alt = ALL_MIDS.filter(m => !mids.includes(m))
-        .sort((a,b) => sc(ctx,b) - sc(ctx,a))[0];
-      if(alt && sc(ctx,alt) > sc(ctx,t)) return alt;
-    }
-    return t;
-  });
-  rest = rest.filter((t,i) => rest.indexOf(t) === i);
-  if(intensity >= 7) rest = rest.slice(0,1);
-  mids = (bodyFirst ? ['body'] : []).concat(rest);
-  return mids.concat(['action']);
+function mapText(t){
+  for(const [k, re] of TEXT_MAP){ if(re.test(t)) return k; }
+  return 'other';
 }
 
-function recordSession(){
-  const s = S.sess;
-  const delta = (typeof s.after === 'number') ? (s.intensity - s.after) : 0;
-  const feelPts = s.feel === 'better' ? 2 : (s.feel === 'worse' ? -2 : 0);
-  const pts = Math.max(-4, Math.min(6, delta + feelPts));
-  if(!scores[s.context]) scores[s.context] = {};
-  s.used.forEach(t => {
+/* safety — free-text content that self-help must not handle */
+const SAFETY_RE = /(kill (myself|me)|suicid\w*|self.?harm|hurt(ing)? myself|cut(ting)? myself|end my life|end it all|don'?t want to (live|be alive|exist)|better off dead|want to die|wanna die|no reason to live|overdose)/i;
+function safetyCheck(text){
+  if(text && SAFETY_RE.test(text)){ go('safety'); return true; }
+  return false;
+}
+
+/* ============ decision tree ============ */
+const PATHS = {
+  fear:    ['fear','control','action'],
+  loop:    ['loop','control','action'],
+  control: ['control','action'],
+  avoid:   ['avoid','action'],
+  body:    ['body','control','action']
+};
+const PATH_LABEL = {
+  fear:'Looking at the fear straight', loop:'Spotting the loop',
+  control:'Sorting what’s in your control', avoid:'Finding one step forward',
+  body:'Starting with your body', fast:'Body first, then one step'
+};
+const TOOL_EYEBROW = {
+  body:'Body first', fear:'Look at it straight', loop:'Spot the loop',
+  control:'In my control — or not', avoid:'One step forward', action:'One small step'
+};
+
+function composePath(key, intensity){
+  let seq = PATHS[key].slice();
+  if(intensity >= 8 && !seq.includes('body')){
+    const firstMid = seq.find(t => t !== 'action');
+    seq = ['body'].concat(firstMid ? [firstMid] : []).concat(['action']);
+  }
+  return seq;
+}
+function bestPathFor(sit){
+  const s = scores[sit];
+  if(!s) return null;
+  let best = null;
+  Object.keys(s).forEach(t => { if(s[t] >= 2 && (!best || s[t] > s[best])) best = t; });
+  return best;
+}
+function applyPts(sit, seq, pts){
+  if(!pts) return;
+  if(!scores[sit]) scores[sit] = {};
+  seq.forEach(t => {
     if(t === 'action') return;
-    const cur = scores[s.context][t] || 0;
-    scores[s.context][t] = Math.max(-6, Math.min(6, cur + pts));
+    scores[sit][t] = Math.max(-6, Math.min(6, (scores[sit][t] || 0) + pts));
   });
-  sessions.unshift({
-    at: Date.now(), context: s.context, before: s.intensity,
-    after: (typeof s.after === 'number') ? s.after : null,
-    feel: s.feel || null, tools: s.used.slice(), action: s.chosenAction || null
-  });
-  if(sessions.length > 80) sessions = sessions.slice(0,80);
-  store.set('anchor.sessions', sessions);
-  store.set('anchor.toolScores', scores);
+  store.set('anchor.pathScores', scores);
 }
 
-/* ============ intake config ============ */
-const INTAKE_STEPS = [
-  {key:'name', type:'name', title:'First — what should I call you?',
-   sub:'Just a first name, or skip it. Everything you share stays on this device.'},
-  {key:'situations', type:'chips', multi:true, options:SITUATIONS.map(s=>s[1]),
-   title:'In which situations would you like me to help you?', sub:'Pick anything that sounds familiar.'},
-  {key:'body', type:'chips', multi:true, options:BODY_SIGNS,
-   title:'When anxiety rises, what happens in your body?', sub:'This helps me catch it with you early.'},
-  {key:'thoughts', type:'chips', multi:true, options:THOUGHTS,
-   title:'Which thoughts tend to show up?', sub:'No judging — these are the anxiety talking.'},
-  {key:'tendencies', type:'chips', multi:true, options:TENDENCIES,
-   title:'What do you usually do when it rises?', sub:'Whatever’s true. It all makes sense.'},
-  {key:'helps', type:'chips', multi:true, options:HELPS,
-   title:'What usually helps, even a little?', sub:''},
-  {key:'nothelps', type:'chips', multi:true, options:NOT_HELPS,
-   title:'And what doesn’t help — or makes it worse?', sub:'I’ll steer away from these.'},
-  {key:'goal', type:'text', title:'If anxiety ran your life a little less…',
-   sub:'…what’s one thing you’d want to be able to do?',
-   placeholder:'e.g. go to parties without planning my escape'}
+/* ============ onboarding (her exact 5 questions) ============ */
+const OB_SIT_OPTS = [
+  ['social','Social situations'],['test','Tests / school'],['performance','Presentations / performance'],
+  ['date','Dating / relationships'],['interview','Work / interviews'],['flight','Flying / travel'],
+  ['alone','Being alone'],['health','Health / medical situations'],['othersit','Other']
+];
+const OB_STEPS = [
+  {key:'age', multi:false, title:'How old are you?', sub:'',
+   options:['14–17','18–24','25–34','35–49','50+']},
+  {key:'situations', multi:true, title:'Where does anxiety tend to show up for you?', sub:'Pick as many as you like.',
+   options:OB_SIT_OPTS.map(o => o[1]), keys:OB_SIT_OPTS.map(o => o[0])},
+  {key:'response', multi:true, title:'When anxiety rises, what tends to take over?', sub:'',
+   options:['My body — heart racing, tightness, shaking…','My thoughts — what ifs, overthinking, replaying…','The urge to escape — avoiding, leaving, cancelling…','It depends']},
+  {key:'reaction', multi:true, title:'What do you tend to do when anxiety gets strong?', sub:'Whatever’s true. No judging.',
+   options:['Avoid or leave','Overthink it','Check / ask for reassurance','Distract myself','Do it anyway','I’m not sure']},
+  {key:'goal', multi:true, title:'What do you want anxiety to stop getting in the way of?', sub:'',
+   options:['Being around people','Doing well at school / work','Speaking up / performing','Dating / relationships','Traveling','Doing things on my own','Trying new things','Something else']}
 ];
 
 /* ============ state ============ */
+function dueFollowup(){ return pending && (Date.now() - pending.at > 20 * 60 * 1000); }
 let S = {
-  screen: meta.onboarded ? 'home' : 'welcome',
-  intake: null, sess: null, tool: null,
+  screen: meta.onboarded2 ? (dueFollowup() ? 'followup' : 'home') : 'welcome',
+  ob: null, sess: null, tool: null,
+  pendingSit: null, pendingNote: null, pendingIntensity: 6,
+  decide: null, lastStep: null,
   breathTimers: []
 };
 
-function startIntake(){
-  S.intake = { step:0, data:{ name:'', situations:[], body:[], thoughts:[], tendencies:[], helps:[], nothelps:[], goal:'' } };
-  go('intake');
+function startOb(){
+  const d = { age:'', situations:[], response:[], reaction:[], goal:[] };
+  if(profile){ Object.keys(d).forEach(k => { if(profile[k]) d[k] = Array.isArray(profile[k]) ? profile[k].slice() : profile[k]; }); }
+  S.ob = { step:0, data:d };
+  go('ob');
 }
-function startSession(ctx, intensity, seqOverride){
+function startSession(pathKey){
   S.sess = {
-    context: ctx, intensity: intensity,
-    seq: seqOverride || composeSession(ctx, intensity),
-    i: 0, used: [], chosenAction: null, after: null, feel: null, saved: false
+    situation: S.pendingSit, note: S.pendingNote || null,
+    intensity: S.pendingIntensity, identify: pathKey,
+    seq: composePath(pathKey, S.pendingIntensity),
+    i: 0, action: null, after: null, controlMine: []
   };
   openTool(S.sess.seq[0]);
 }
 function openTool(tool){
   S.tool = { name: tool, step: 0, data: {} };
-  if(S.sess && !S.sess.used.includes(tool)) S.sess.used.push(tool);
   go('tool');
 }
 function nextTool(){
@@ -488,6 +496,25 @@ function nextTool(){
   s.i++;
   if(s.i < s.seq.length) openTool(s.seq[s.i]);
   else go('debrief');
+}
+function finishRecord(){
+  const s = S.sess;
+  const at = Date.now();
+  const rec = {
+    at, situation: s.situation, note: s.note, identify: s.identify,
+    path: s.seq.slice(), before: s.intensity,
+    after: (typeof s.after === 'number') ? s.after : null,
+    action: s.action || null, stepDone: null
+  };
+  sessions.unshift(rec);
+  if(sessions.length > 100) sessions = sessions.slice(0, 100);
+  store.set('anchor.sessions2', sessions);
+  if(rec.after != null) applyPts(s.situation, s.seq, Math.max(-2, Math.min(2, s.intensity - rec.after)));
+  if(rec.action){
+    pending = { at, situation: s.situation, action: rec.action, path: s.seq.slice() };
+    store.set('anchor.pending', pending);
+  }
+  return rec;
 }
 
 /* ============ render helpers ============ */
@@ -532,6 +559,11 @@ function bindSlider(id){
     document.getElementById(id + '-label').textContent = intensityWord(+el.value);
   });
 }
+function readInput(id){
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
+function pack(){ return SIT[S.sess ? S.sess.situation : (S.pendingSit || 'other')] || SIT.other; }
 
 /* ============ screens ============ */
 const SCREENS = {};
@@ -540,44 +572,64 @@ SCREENS.welcome = () => `
   <div class="grow"></div>
   <div class="eyebrow">Anchor</div>
   <h1>For the moment anxiety starts to rise.</h1>
-  <p class="sub">You won’t have to choose from a menu of exercises. Anchor gets to know you, picks what to try in the moment, and learns what actually works for you.</p>
+  <p class="sub">You won’t choose from a menu of exercises. You tell Anchor what’s happening — it picks the path, walks you through it, and learns what actually helps <em>you</em>.</p>
   <div class="note"><strong>A quick, honest note:</strong> Anchor is a self-help tool — not a diagnosis and not a replacement for therapy. If you’re in crisis in the US, call or text <strong>988</strong>.</div>
   <div class="grow"></div>
   <div class="stack">
-    <button class="btn btn-primary" data-act="startIntake">Let’s get to know each other</button>
-    <button class="btn btn-quiet" data-act="skipIntake">Skip for now</button>
+    <button class="btn btn-primary" data-act="startOb">Let’s make Anchor yours</button>
+    <button class="btn btn-quiet" data-act="skipOb">Skip for now</button>
   </div>`;
 
-SCREENS.intake = () => {
-  const st = INTAKE_STEPS[S.intake.step];
-  const d = S.intake.data;
-  let bodyHtml = '';
-  if(st.type === 'chips'){
-    bodyHtml = chips(st.options, d[st.key], 'chip');
-  } else if(st.type === 'name'){
-    bodyHtml = '<input type="text" id="intake-input" placeholder="Your name (optional)" value="' + esc(d.name) + '" autocomplete="off">';
-  } else {
-    bodyHtml = '<textarea id="intake-input" placeholder="' + esc(st.placeholder || '') + '">' + esc(d.goal) + '</textarea>';
-  }
-  return topbar(S.intake.step > 0 ? 'intakeBack' : 'goHomeSkip', dots(INTAKE_STEPS.length, S.intake.step)) +
+SCREENS.ob = () => {
+  const st = OB_STEPS[S.ob.step];
+  const d = S.ob.data;
+  const sel = st.keys
+    ? st.keys.map((k,i) => d[st.key].includes(k) ? st.options[i] : null).filter(Boolean)
+    : (st.multi ? d[st.key] : [d[st.key]]);
+  return topbar(S.ob.step > 0 ? 'obBack' : 'skipOb', dots(OB_STEPS.length, S.ob.step)) +
+    (S.ob.step === 0 ? '<div class="eyebrow">A few quick questions</div>' : '') +
     '<h2>' + st.title + '</h2>' +
     (st.sub ? '<p class="sub">' + st.sub + '</p>' : '<div class="spacer"></div>') +
-    bodyHtml +
+    chips(st.options, sel, 'obChip') +
     '<div class="grow"></div><div class="spacer"></div>' +
-    '<button class="btn btn-primary" data-act="intakeNext">' +
-    (S.intake.step === INTAKE_STEPS.length - 1 ? 'Done — build my profile' : 'Continue') + '</button>';
+    '<button class="btn btn-primary" data-act="obNext">' +
+    (S.ob.step === OB_STEPS.length - 1 ? 'Done' : 'Continue') + '</button>';
+};
+
+SCREENS.startpoint = () => {
+  const p = profile;
+  const sitLabels = p.situations.map(k => { const o = OB_SIT_OPTS.find(x => x[0] === k); return o ? o[1] : k; });
+  const short = arr => arr.map(x => x.split(' — ')[0].toLowerCase());
+  const row = (label, txt) => txt ? '<p style="margin-bottom:10px"><strong>' + label + ':</strong> <span style="color:var(--ink-soft)">' + esc(txt) + '</span></p>' : '';
+  return topbar() +
+    '<div class="eyebrow">Your starting point</div>' +
+    '<h2>Here’s where we begin.</h2>' +
+    '<div class="spacer"></div>' +
+    '<div class="card" style="font-size:15px">' +
+      row('Anxiety shows up around', sitLabels.join(' · ')) +
+      row('It tends to grab', short(p.response).join(' · ')) +
+      row('You tend to', p.reaction.map(x => x.toLowerCase()).join(' · ')) +
+      row('You want it out of the way of', p.goal.map(x => x.toLowerCase()).join(' · ')) +
+    '</div>' +
+    '<div class="spacer"></div>' +
+    '<div class="note">That’s enough for now. <strong>We’ll learn the rest from what actually helps you.</strong></div>' +
+    '<div class="grow"></div>' +
+    '<button class="btn btn-primary" data-act="goHome">I’m ready</button>';
 };
 
 SCREENS.home = () => {
-  const name = profile && profile.name ? profile.name : '';
   const n = sessions.length;
+  const steps = sessions.filter(s => s.stepDone === 'yes').length;
+  let greet = 'Hey.';
+  if(steps >= 3) greet = 'Hey. ' + steps + ' times now, anxiety didn’t decide for you.';
+  else if(n >= 3) greet = 'Hey. You’ve faced this ' + n + ' times — the tools are becoming yours.';
   return `
   <div class="home-head">
     <div class="brand">Anchor</div>
-    <div class="home-greet">${name ? 'Hey, ' + esc(name) + '.' : 'Hey.'}${n >= 3 ? ' You’ve worked through this ' + n + ' times — the tools are becoming yours.' : ''}</div>
+    <div class="home-greet">${esc(greet)}</div>
   </div>
   <div class="grow"></div>
-  <button class="bigbtn" data-act="rising">MY ANXIETY IS RISING<small>two quick taps, then we start</small></button>
+  <button class="bigbtn" data-act="rising">MY ANXIETY IS RISING<small>a couple of taps, then we start</small></button>
   <div class="spacer"></div>
   <div class="stack">
     <button class="btn btn-amber" data-act="justHelp">JUST HELP ME NOW</button>
@@ -585,40 +637,119 @@ SCREENS.home = () => {
   </div>
   <div class="grow"></div>
   <div class="home-links">
-    <button data-act="goProfile">My profile</button>
-    <button data-act="goHistory">What works for me</button>
+    <button data-act="goProfile">My starting point</button>
+    <button data-act="goHistory">My path</button>
     <button data-act="goAbout">About &amp; safety</button>
   </div>`;
 };
 
-SCREENS.checkinContext = () => topbar('goHome') +
-  '<div class="eyebrow">Okay. I’m with you.</div>' +
-  '<h2>What’s happening right now?</h2>' +
-  '<div class="spacer"></div>' +
-  '<div class="stack">' + CONTEXTS.map(c =>
-    '<button class="btn btn-ghost" style="text-align:left;font-weight:600;font-family:var(--body);font-size:16px" data-act="pickContext" data-val="' + c[0] + '">' + c[1] + '</button>'
-  ).join('') + '</div>';
+/* ---- follow-up on the last step ---- */
+SCREENS.followup = () => topbar() +
+  '<div class="eyebrow">Last time</div>' +
+  '<h2>Did you take your step?</h2>' +
+  '<div class="note" style="margin-bottom:8px">Your step was: <strong>' + esc(pending.action) + '</strong></div>' +
+  '<p class="sub">This matters more than the anxiety number.</p>' +
+  '<div class="grow"></div><div class="stack">' +
+  '<button class="btn btn-primary" data-act="stepAnswer" data-val="yes">Yes</button>' +
+  '<button class="btn btn-ghost" data-act="stepAnswer" data-val="partly">Partly</button>' +
+  '<button class="btn btn-ghost" data-act="stepAnswer" data-val="no">No</button>' +
+  '</div><div class="grow"></div>';
 
-SCREENS.checkinIntensity = () => topbar('rising') +
+SCREENS.followupDone = () => {
+  const v = S.lastStep;
+  const msg = v === 'yes'
+    ? ['You took the step.','That’s the whole win — the anxiety didn’t choose for you.']
+    : v === 'partly'
+    ? ['Partly counts.','You moved. Next time we’ll find an even smaller first step.']
+    : ['That’s okay.','It happens to everyone. Next time we’ll pick a smaller step — one anxiety can’t block.'];
+  return '<div class="action-final">' +
+    '<div class="action-tag">' + (v === 'yes' ? 'That’s the win' : 'Noted') + '</div>' +
+    '<div class="action-word">' + msg[0] + '</div>' +
+    '<p class="sub" style="margin:6px auto 0;text-align:center">' + msg[1] + '</p>' +
+    '</div>' +
+    '<button class="btn btn-quiet" data-act="goHome">close</button>';
+};
+
+/* ---- check-in: situation → intensity → recognize → identify ---- */
+SCREENS.situation = () => {
+  const picked = (profile && profile.situations) || [];
+  const order = SIT_ORDER.filter(k => k !== 'other')
+    .sort((a,b) => (picked.includes(b) ? 1 : 0) - (picked.includes(a) ? 1 : 0))
+    .concat(['other']);
+  return topbar('goHome') +
+    '<div class="eyebrow">Okay. I’m with you.</div>' +
+    '<h2>What’s making you anxious right now?</h2>' +
+    '<div class="spacer"></div>' +
+    '<div class="stack" style="gap:10px">' + order.map(k =>
+      '<button class="btn btn-ghost btn-list" data-act="pickSituation" data-val="' + k + '">' +
+      esc(SIT[k].label) + '<small>' + esc(SIT[k].hint) + '</small></button>'
+    ).join('') + '</div><div class="spacer"></div>';
+};
+
+SCREENS.freeText = () => topbar('rising') +
+  '<h2>Tell me what’s happening — a few words is plenty.</h2>' +
+  '<div class="spacer"></div>' +
+  '<textarea id="free-input" placeholder="e.g. she hasn’t answered me for three hours and I’m freaking out"></textarea>' +
+  '<div class="grow"></div>' +
+  '<button class="btn btn-primary" data-act="freeNext">Continue</button>';
+
+SCREENS.intensity = () => topbar('rising') +
   '<h2>How strong is it right now?</h2>' +
   '<div class="grow"></div>' + sliderBlock('intensity', 6) + '<div class="grow"></div>' +
-  '<button class="btn btn-primary" data-act="beginSession">Start</button>';
+  '<button class="btn btn-primary" data-act="toRecognize">Continue</button>';
+
+SCREENS.recognize = () => topbar('backIntensity') +
+  '<div class="eyebrow">First, name it</div>' +
+  '<h2>Your anxiety is up right now.</h2>' +
+  '<p class="sub" style="max-width:none">That can affect what you feel in your body — and what your mind is telling you. It doesn’t mean something dangerous is happening. It means anxiety is loud.</p>' +
+  '<div class="mini-wrap">' +
+    '<div class="breath-circle mini" id="mcircle"></div>' +
+    '<div class="breath-phase mini" id="mphase">One slow breath, if you want.</div>' +
+  '</div>' +
+  '<div class="grow"></div>' +
+  '<div class="stack">' +
+    '<button class="btn btn-ghost" data-act="oneBreath" id="onebreath-btn">One slow breath together</button>' +
+    '<button class="btn btn-primary" data-act="toIdentify">Continue</button>' +
+  '</div>';
+
+SCREENS.identify = () => {
+  const best = bestPathFor(S.pendingSit);
+  return topbar('toRecognizeBack') +
+    '<h2>What’s happening most right now?</h2>' +
+    (best ? '<div class="note" style="margin-bottom:14px">Last time here, <strong>' +
+      PATH_LABEL[best].toLowerCase() + '</strong> helped you take your step.</div>' : '<div class="spacer"></div>') +
+    '<div class="stack" style="gap:10px">' +
+    '<button class="btn btn-ghost btn-list" data-act="pickIdentify" data-val="fear">I’m afraid of what might happen</button>' +
+    '<button class="btn btn-ghost btn-list" data-act="pickIdentify" data-val="loop">I keep thinking about it again and again</button>' +
+    '<button class="btn btn-ghost btn-list" data-act="pickIdentify" data-val="control">I’m stuck on something I can’t control</button>' +
+    '<button class="btn btn-ghost btn-list" data-act="pickIdentify" data-val="avoid">I want to avoid it, leave, or cancel</button>' +
+    '<button class="btn btn-ghost btn-list" data-act="pickIdentify" data-val="unsure">I’m not sure</button>' +
+    '</div><div class="spacer"></div>';
+};
+
+SCREENS.clarify = () => topbar('toIdentifyBack') +
+  '<h2>Okay — which is closest?</h2>' +
+  '<div class="spacer"></div>' +
+  '<div class="stack" style="gap:10px">' +
+  '<button class="btn btn-ghost btn-list" data-act="pickClarify" data-val="body">My body is going fast — heart, breath, shaking</button>' +
+  '<button class="btn btn-ghost btn-list" data-act="pickClarify" data-val="loop">My head won’t slow down</button>' +
+  '<button class="btn btn-ghost btn-list" data-act="pickClarify" data-val="control">I just feel stuck</button>' +
+  '</div><div class="grow"></div>';
 
 /* ---- tool dispatcher ---- */
 SCREENS.tool = () => TOOL_VIEWS[S.tool.name]();
 
-function toolHeader(eyebrow){
+function toolHeader(){
   const s = S.sess;
-  const pos = s ? (s.i + 1) + ' of ' + s.seq.length : '';
   return topbar('exitSession', s ? '<div class="step-dots">' +
     s.seq.map((t,i) => '<i class="' + (i <= s.i ? 'on' : '') + '"></i>').join('') + '</div>' : '') +
-    '<div class="eyebrow">' + eyebrow + (pos ? ' · ' + pos : '') + '</div>';
+    '<div class="eyebrow">' + TOOL_EYEBROW[S.tool.name] + '</div>';
 }
 
 const TOOL_VIEWS = {};
 
 /* BODY — breathing */
-TOOL_VIEWS.body = () => toolHeader('Body first') +
+TOOL_VIEWS.body = () => toolHeader() +
   '<h2>Follow the circle.</h2>' +
   '<div class="breath-wrap">' +
     '<div class="breath-circle" id="bcircle"></div>' +
@@ -666,94 +797,41 @@ function runBreathing(){
   }, t + 200));
 }
 
-/* FEAR */
+/* FEAR — look at it straight */
 TOOL_VIEWS.fear = () => {
-  const st = S.tool.step, d = S.tool.data, ctx = S.sess.context;
-  const head = toolHeader('Look at it straight');
+  const st = S.tool.step, d = S.tool.data, p = pack();
+  const head = toolHeader();
   if(st === 0){
-    const picks = (FEAR_PICKS[ctx] || FEAR_PICKS.unknown)
-      .concat(profile && profile.thoughts && profile.thoughts.length ? profile.thoughts.slice(0,3) : []);
-    const uniq = picks.filter((p,i) => picks.indexOf(p) === i);
     return head + '<h2>What are you afraid will happen?</h2>' +
       '<p class="sub">Name it. That alone takes some of its power.</p>' +
-      chips(uniq, d.fear ? [d.fear] : [], 'fearPick') +
+      chips(p.fears, d.fear ? [d.fear] : [], 'fearPick') +
       '<input type="text" id="fear-input" placeholder="…or say it your way" autocomplete="off">' +
       '<div class="grow"></div><div class="spacer"></div>' +
       '<button class="btn btn-primary" data-act="fearNext">Continue</button>';
   }
   if(st === 1){
-    return head + '<h2>If that actually happened — what would you do?</h2>' +
-      '<p class="sub">Not “it won’t happen.” If it did — how would you handle it?</p>' +
-      chips(COPES, d.copes || [], 'copePick') +
-      '<div class="grow"></div>' +
-      '<button class="btn btn-primary" data-act="fearNext">Continue</button>';
-  }
-  if(st === 2){
-    return head + '<h2>And what would your very first step be?</h2>' +
-      '<div class="spacer"></div>' +
-      '<input type="text" id="fear-step" placeholder="e.g. take a breath and ask for a minute" autocomplete="off">' +
-      '<div class="grow"></div>' +
+    return head + '<h2>If that actually happened — what could you do next?</h2>' +
+      '<p class="sub">Not “it won’t happen.” If it did — how would you handle the next moment?</p>' +
+      chips(['Ask for help','Take a break, then try again','Apologize once and move on',
+        'Leave, regroup, come back','Laugh it off','Talk to someone I trust','Try a different way'],
+        d.copes || [], 'copePick') +
+      '<input type="text" id="cope-input" placeholder="…or your own way" autocomplete="off">' +
+      '<div class="grow"></div><div class="spacer"></div>' +
       '<button class="btn btn-primary" data-act="fearNext">Continue</button>';
   }
   return head + '<div class="grow"></div>' +
     '<div class="card" style="text-align:center">' +
       '<div class="eyebrow" style="margin-bottom:14px">The part worth keeping</div>' +
-      '<h2 style="margin-bottom:0">Even if something I don’t want happens — I can handle it.</h2>' +
+      '<h2 style="margin-bottom:0">' + esc(p.evenIf || EVEN_IF_DEFAULT) + '</h2>' +
     '</div>' +
     '<div class="grow"></div>' +
     '<button class="btn btn-primary" data-act="toolDone">Continue</button>';
 };
 
-/* THOUGHT */
-TOOL_VIEWS.thought = () => {
-  const st = S.tool.step, d = S.tool.data, ctx = S.sess.context;
-  const head = toolHeader('A thought is not a fact');
-  if(st === 0){
-    const picks = (profile && profile.thoughts && profile.thoughts.length ? profile.thoughts : [])
-      .concat(FEAR_PICKS[ctx] || []).concat(THOUGHTS.slice(0,3));
-    const uniq = picks.filter((p,i) => picks.indexOf(p) === i).slice(0,7);
-    return head + '<h2>Which thought is loudest right now?</h2>' +
-      chips(uniq, d.thought ? [d.thought] : [], 'thoughtPick') +
-      '<input type="text" id="thought-input" placeholder="…or type it" autocomplete="off">' +
-      '<div class="grow"></div><div class="spacer"></div>' +
-      '<button class="btn btn-primary" data-act="thoughtNext">Continue</button>';
-  }
-  if(st === 1){
-    return head + '<h2>Is that a fact — or a prediction?</h2>' +
-      (d.thought ? '<div class="note">“' + esc(d.thought) + '”</div><div class="spacer"></div>' : '') +
-      '<div class="grow"></div><div class="stack">' +
-      '<button class="btn btn-ghost" data-act="thoughtKind" data-val="prediction">It’s a prediction</button>' +
-      '<button class="btn btn-ghost" data-act="thoughtKind" data-val="unsure">I’m not sure</button>' +
-      '<button class="btn btn-ghost" data-act="thoughtKind" data-val="fact">It’s a fact — it really happened</button>' +
-      '</div><div class="grow"></div>';
-  }
-  if(st === 2 && d.kind === 'fact'){
-    return head + '<h2>Okay. Facts can be handled.</h2>' +
-      '<p class="sub">No need to argue with what’s real — what’s one thing you could do about the part that’s actually real?</p>' +
-      '<input type="text" id="fact-step" placeholder="one doable thing" autocomplete="off">' +
-      '<div class="grow"></div>' +
-      '<button class="btn btn-primary" data-act="thoughtNext">Continue</button>';
-  }
-  if(st === 2){
-    return head + '<h2>What says it might not be true?</h2>' +
-      '<p class="sub">Tap anything that’s honestly the case.</p>' +
-      chips(['It hasn’t actually happened before','I’ve gotten through this before',
-        'People mostly think about themselves','I’m guessing, not knowing',
-        'I always predict the worst — and it’s rarely the worst'], d.evidence || [], 'evPick') +
-      '<div class="grow"></div>' +
-      '<button class="btn btn-primary" data-act="thoughtNext">Continue</button>';
-  }
-  return head + '<h2>Pick a more balanced version.</h2>' +
-    '<p class="sub">Not “think positive” — just more honest than the anxiety’s version.</p>' +
-    chips(BALANCED, d.balanced ? [d.balanced] : [], 'balPick') +
-    '<div class="grow"></div>' +
-    '<button class="btn btn-primary" data-act="toolDone">Continue</button>';
-};
-
-/* LOOP */
+/* LOOP — spot the loop */
 TOOL_VIEWS.loop = () => {
   const st = S.tool.step;
-  const head = toolHeader('Spot the loop');
+  const head = toolHeader();
   if(st === 0){
     return head + '<h2>Have you already thought about this — more than once?</h2>' +
       '<div class="grow"></div><div class="stack">' +
@@ -773,7 +851,7 @@ TOOL_VIEWS.loop = () => {
     return head + '<div class="grow"></div>' +
       '<div class="card" style="text-align:center">' +
         '<h2>This is the anxiety loop — not a new problem to solve.</h2>' +
-        '<p class="sub" style="margin:10px auto 0">You don’t have to erase the thought. Just notice it: <em>that’s the loop again.</em> You’ve already done this lap.</p>' +
+        '<p class="sub" style="margin:10px auto 0">You don’t have to erase the thought. A thought can show up without being a fact. Just notice it: <em>that’s the loop again.</em> You’ve already done this lap.</p>' +
       '</div>' +
       '<div class="grow"></div>' +
       (S.sess.seq.length === 1
@@ -789,21 +867,28 @@ TOOL_VIEWS.loop = () => {
       '<p class="sub" style="margin:10px auto 0">Let’s look at it once, properly, and then decide what’s yours to do.</p>' +
     '</div>' +
     '<div class="grow"></div>' +
-    '<button class="btn btn-primary" data-act="loopToThought">Look at it once</button>';
+    '<button class="btn btn-primary" data-act="loopToFear">Look at it once</button>';
 };
 
-/* CONTROL */
+/* CONTROL — with gentle correction of wrong sorts */
 TOOL_VIEWS.control = () => {
-  const d = S.tool.data;
-  const head = toolHeader('Where does your energy go?');
+  const d = S.tool.data, p = pack();
+  const head = toolHeader();
   if(!d.cards){
-    d.cards = (CONTROL_CARDS[S.sess.context] || CONTROL_CARDS.unknown).map(c => c[0]);
-    d.idx = 0; d.mine = []; d.not = [];
+    const a = p.mine.map(t => ({t, truth:'mine'}));
+    const b = p.not.map(t => ({t, truth:'not'}));
+    const cards = [];
+    for(let i = 0; i < Math.max(a.length, b.length); i++){
+      if(a[i]) cards.push(a[i]);
+      if(b[i]) cards.push(b[i]);
+    }
+    d.cards = cards; d.idx = 0; d.mine = []; d.not = []; d.tries = 0; d.warn = null;
   }
   if(d.idx < d.cards.length){
     return head + '<p class="sub" style="margin-bottom:6px">Sort each one. Card ' + (d.idx + 1) + ' of ' + d.cards.length + '.</p>' +
       '<div class="grow"></div>' +
-      '<div class="sort-card">' + esc(d.cards[d.idx]) + '</div>' +
+      (d.warn ? '<div class="warn">' + esc(d.warn) + '</div>' : '') +
+      '<div class="sort-card">' + esc(d.cards[d.idx].t) + '</div>' +
       '<div class="sort-btns">' +
         '<button class="btn btn-primary" data-act="sortCard" data-val="mine">In my control</button>' +
         '<button class="btn btn-ghost" data-act="sortCard" data-val="not">Not in my control</button>' +
@@ -812,7 +897,7 @@ TOOL_VIEWS.control = () => {
       '<button class="btn btn-quiet" data-act="sortSkip">skip this one</button>';
   }
   return head + '<h2>Here’s the split.</h2>' +
-    '<p class="sub">Your energy goes to the left column. The right one? Not yours to solve right now — if something happens, you’ll deal with it then.</p>' +
+    '<p class="sub">Your energy goes to the left column. The right one isn’t yours to solve — if something happens there, you’ll deal with it then.</p>' +
     '<div class="col-lists">' +
       '<div class="col mine"><h3>In my control</h3><ul>' +
         (d.mine.length ? d.mine.map(x => '<li>' + esc(x) + '</li>').join('') : '<li>—</li>') + '</ul></div>' +
@@ -823,41 +908,74 @@ TOOL_VIEWS.control = () => {
     '<button class="btn btn-primary" data-act="toolDone">Continue</button>';
 };
 
-/* ACTION */
+/* AVOID — one step forward */
+TOOL_VIEWS.avoid = () => {
+  const st = S.tool.step, d = S.tool.data, p = pack();
+  const head = toolHeader();
+  if(st === 0){
+    return head + '<h2>If anxiety wasn’t making this decision for you — what would you want to do?</h2>' +
+      '<p class="sub">Not what’s easiest. What you’d actually want.</p>' +
+      chips([p.want, 'I’m honestly not sure'], d.want ? [d.want] : [], 'wantPick') +
+      '<input type="text" id="want-input" placeholder="…or in your words" autocomplete="off">' +
+      '<div class="grow"></div><div class="spacer"></div>' +
+      '<button class="btn btn-primary" data-act="avoidNext">Continue</button>';
+  }
+  return head + '<div class="grow"></div>' +
+    '<div class="card" style="text-align:center">' +
+      '<h2>You don’t have to do the whole thing.</h2>' +
+      '<p class="sub" style="margin:10px auto 0">One small step in that direction is enough. Let’s pick it.</p>' +
+    '</div>' +
+    '<div class="grow"></div>' +
+    '<button class="btn btn-primary" data-act="toolDone">Pick my step</button>';
+};
+
+/* ACTION — one small step */
 TOOL_VIEWS.action = () => {
-  const d = S.tool.data;
-  const head = toolHeader('One small step');
-  let opts = (ACTIONS[S.sess.context] || ACTIONS.unknown).slice();
-  const ctrl = S.sess.controlMine || [];
-  ctrl.slice(0,2).forEach(c => { if(!opts.includes(c)) opts.push(c); });
-  if(profile && profile.goal) opts.push('One tiny step toward: ' + profile.goal);
+  const d = S.tool.data, p = pack();
+  const head = toolHeader();
+  let opts = p.steps.slice();
+  const win = sessions.find(s => s.situation === S.sess.situation && s.stepDone === 'yes' && s.action);
+  if(win && !opts.includes(win.action)) opts.unshift(win.action);
   return head + '<h2>What’s one small thing you can do now — that’s in your control?</h2>' +
+    (win ? '<p class="sub">The first one worked for you before.</p>' : '') +
     chips(opts, d.action ? [d.action] : [], 'actionPick') +
     '<input type="text" id="action-input" placeholder="…or your own" autocomplete="off">' +
     '<div class="grow"></div><div class="spacer"></div>' +
     '<button class="btn btn-amber" data-act="actionChosen">This one</button>';
 };
 
+/* decision → action resolver */
+SCREENS.decide = () => topbar() +
+  '<div class="eyebrow">One small step</div>' +
+  '<h2>That’s a decision — not yet an action.</h2>' +
+  '<p class="sub">What feels right for now?</p>' +
+  '<div class="stack" style="gap:10px">' + S.decide.halves.map((h,i) =>
+    '<button class="btn btn-ghost btn-list" data-act="decidePick" data-val="' + i + '">' + esc(h) + '</button>'
+  ).join('') + '</div><div class="grow"></div>';
+
+function concreteFor(half){
+  if(/reach|text|messag|call|send|talk|tell/i.test(half)) return 'Send one honest message.';
+  if(/rest|leave|wait|let it|sit|drop|nothing|space/i.test(half)) return 'Leave it for now and go back to what you were doing.';
+  const t = half.trim();
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
 /* debrief + commit */
 SCREENS.debrief = () => topbar() +
-  '<div class="eyebrow">Quick check before you go</div>' +
-  '<h2>How strong is the anxiety now?</h2>' +
+  '<div class="eyebrow">Quick check</div>' +
+  '<h2>How high is the anxiety now?</h2>' +
   sliderBlock('after', Math.max(0, S.sess.intensity - 1)) +
   '<div class="spacer"></div>' +
-  '<h2 style="font-size:19px">Compared to when you opened Anchor?</h2>' +
-  '<div class="spacer"></div>' +
-  '<div class="stack">' +
-    '<button class="btn btn-ghost" data-act="feel" data-val="better">A bit better</button>' +
-    '<button class="btn btn-ghost" data-act="feel" data-val="same">About the same</button>' +
-    '<button class="btn btn-ghost" data-act="feel" data-val="worse">Worse</button>' +
-  '</div><div class="grow"></div>';
+  '<div class="note">Whatever the number says — <strong>taking your step is the real win.</strong></div>' +
+  '<div class="grow"></div>' +
+  '<button class="btn btn-primary" data-act="afterDone">Continue</button>';
 
 SCREENS.commit = () => {
-  const a = S.sess.chosenAction;
+  const a = S.sess.action;
   return '<div class="action-final">' +
     '<div class="action-tag">Your one step</div>' +
     '<div class="action-word">' + esc(a) + '</div>' +
-    '<p class="sub" style="margin:6px auto 0;text-align:center">Now put the phone down and go do it.<br>That’s the whole point — you, not the app.</p>' +
+    '<p class="sub" style="margin:6px auto 0;text-align:center">Now put the phone down and go do it.<br>I’ll ask you later whether you did — that’s the part that counts.</p>' +
   '</div>' +
   '<button class="btn btn-quiet" data-act="goHome">close</button>';
 };
@@ -869,64 +987,90 @@ SCREENS.calm = () => '<div class="action-final">' +
   '</div>' +
   '<button class="btn btn-quiet" data-act="goHome">close</button>';
 
-/* history */
+/* safety */
+SCREENS.safety = () => topbar() +
+  '<div class="eyebrow">Let’s pause here</div>' +
+  '<h2>This sounds bigger than what Anchor is built for.</h2>' +
+  '<p class="sub" style="max-width:none">Anchor is a self-help tool — and right now you deserve real, human support. Please reach out:</p>' +
+  '<div class="stack" style="gap:12px">' +
+  '<div class="note"><strong>In the US:</strong> call or text <a href="tel:988">988</a> — the Suicide &amp; Crisis Lifeline. Free, 24/7, and they’re good at this.</div>' +
+  '<div class="note"><strong>In immediate danger?</strong> Call <a href="tel:911">911</a> now.</div>' +
+  '<div class="note">If you can, tell someone you trust what’s going on — a parent, a friend, a counselor. You don’t have to carry this alone.</div>' +
+  '</div>' +
+  '<div class="grow"></div>' +
+  '<button class="btn btn-quiet" data-act="goHome">back to home</button>';
+
+/* my path (history + insights) */
 SCREENS.history = () => {
-  let rows = sessions.slice(0,20).map(s => {
+  const n = sessions.length;
+  const stepsYes = sessions.filter(s => s.stepDone === 'yes').length;
+  let rows = sessions.slice(0, 20).map(s => {
     const dte = new Date(s.at);
     const when = (dte.getMonth() + 1) + '/' + dte.getDate();
     const delta = (s.after != null) ? s.before - s.after : null;
     const dHtml = delta == null ? '' :
       '<span class="sess-delta ' + (delta > 0 ? 'down' : (delta < 0 ? 'up' : '')) + '">' +
       s.before + ' → ' + s.after + '</span>';
+    const mark = s.stepDone === 'yes' ? '<span class="stepmark yes">step ✓</span>' :
+      s.stepDone === 'partly' ? '<span class="stepmark partly">step ±</span>' :
+      s.stepDone === 'no' ? '<span class="stepmark no">step —</span>' : '';
     return '<div class="sess-row"><span class="sess-when">' + when + '</span>' +
-      '<span class="sess-what">' + esc(CTX_LABEL[s.context] || s.context) +
-      '<small>' + s.tools.filter(t => t !== 'action').map(t => TOOL_NAME[t]).join(' · ') + '</small></span>' +
-      dHtml + '</div>';
+      '<span class="sess-what">' + esc(SIT[s.situation] ? SIT[s.situation].label : s.situation) +
+      '<small>' + (s.action ? esc(s.action) : PATH_LABEL[s.identify] || '') + '</small></span>' +
+      mark + dHtml + '</div>';
   }).join('');
   return topbar('goHome') +
-    '<h2>What works for me</h2>' +
-    '<p class="sub">' + insightLine() + '</p>' +
-    (sessions.length ? '<div class="card" style="padding:6px 16px">' + rows + '</div>'
-      : '<div class="note">Nothing here yet. Next time anxiety rises, open Anchor — each session teaches it what helps <em>you</em>.</div>') +
+    '<h2>My path</h2>' +
+    '<p class="sub" style="max-width:none">' + insightLine() + '</p>' +
+    (stepsYes > 0 ? '<div class="note" style="margin-bottom:14px"><strong>' + stepsYes +
+      (stepsYes === 1 ? ' time' : ' times') + '</strong> you did the thing anxiety was trying to stop. That’s the number that matters.</div>' : '') +
+    (n ? '<div class="card" style="padding:6px 16px">' + rows + '</div>'
+      : '<div class="note">Nothing here yet. Next time anxiety rises, open Anchor — each time teaches it what helps <em>you</em>.</div>') +
     '<div class="grow"></div>';
 };
 function insightLine(){
   let best = null;
-  Object.keys(scores).forEach(ctx => {
-    Object.keys(scores[ctx]).forEach(t => {
-      const v = scores[ctx][t];
-      if(v > 0 && (!best || v > best.v)) best = {ctx, t, v};
+  Object.keys(scores).forEach(sit => {
+    Object.keys(scores[sit]).forEach(t => {
+      const v = scores[sit][t];
+      if(v > 0 && (!best || v > best.v)) best = {sit, t, v};
     });
   });
-  if(best) return TOOL_NAME[best.t] + ' has helped you most when it’s “' +
-    (CTX_LABEL[best.ctx] || best.ctx).toLowerCase() + '.” I’ll lead with it there.';
-  if(sessions.length) return 'A few more sessions and I’ll know which tools work best for you, where.';
-  return 'Your sessions will show up here.';
+  if(best) return PATH_LABEL[best.t] + ' has helped you move forward most, around ' +
+    (SIT[best.sit] ? SIT[best.sit].label.toLowerCase() : best.sit) + '. I’ll lean on it there.';
+  if(sessions.length) return 'A few more times and I’ll know which path works best for you, where.';
+  return 'Your path will show up here.';
 }
 
-/* profile */
+/* starting point (profile) */
 SCREENS.profile = () => {
   const p = profile;
-  const line = (label, arr) => arr && arr.length ?
-    '<p style="margin-bottom:10px"><strong>' + label + ':</strong> <span style="color:var(--ink-soft)">' + arr.map(esc).join(' · ') + '</span></p>' : '';
+  const row = (label, txt) => txt ? '<p style="margin-bottom:10px"><strong>' + label + ':</strong> <span style="color:var(--ink-soft)">' + esc(txt) + '</span></p>' : '';
+  let bodyHtml;
+  if(p){
+    const sitLabels = p.situations.map(k => { const o = OB_SIT_OPTS.find(x => x[0] === k); return o ? o[1] : k; });
+    bodyHtml = '<div class="card" style="font-size:15px">' +
+      row('Age', p.age) +
+      row('Anxiety shows up around', sitLabels.join(' · ')) +
+      row('It tends to grab', p.response.map(x => x.split(' — ')[0]).join(' · ')) +
+      row('You tend to', p.reaction.join(' · ')) +
+      row('You want it out of the way of', p.goal.join(' · ')) +
+      '</div>';
+  } else {
+    bodyHtml = '<div class="note">No starting point yet — Anchor is working generically. Five quick questions make it yours.</div>';
+  }
   return topbar('goHome') +
-    '<h2>' + (p && p.name ? esc(p.name) + '’s profile' : 'My profile') + '</h2>' +
-    '<p class="sub">This is how Anchor decides what to try with you. It stays on this device only.</p>' +
-    (p ? '<div class="card" style="font-size:15px">' +
-      line('Situations', p.situations) + line('In my body', p.body) +
-      line('Typical thoughts', p.thoughts) + line('I tend to', p.tendencies) +
-      line('Usually helps', p.helps) + line('Doesn’t help', p.nothelps) +
-      (p.goal ? '<p><strong>I want to be able to:</strong> <span style="color:var(--ink-soft)">' + esc(p.goal) + '</span></p>' : '') +
-      '</div>'
-    : '<div class="note">No profile yet — Anchor is working generically. A two-minute intake makes it personal.</div>') +
+    '<h2>My starting point</h2>' +
+    '<p class="sub">This is where Anchor started learning you. The rest it learns from what actually helps. Everything stays on this device.</p>' +
+    bodyHtml +
     '<div class="grow"></div><div class="stack">' +
-    '<button class="btn btn-ghost" data-act="startIntake">' + (p ? 'Redo the intake' : 'Do the intake') + '</button>' +
+    '<button class="btn btn-ghost" data-act="startOb">' + (p ? 'Update my answers' : 'Answer the questions') + '</button>' +
     '<button class="btn btn-quiet" data-act="eraseAsk">Erase all my data</button></div>';
 };
 
 SCREENS.erase = () => topbar('goProfile') +
   '<h2>Erase everything?</h2>' +
-  '<p class="sub">Profile, history, and what Anchor has learned about you — gone from this device. This can’t be undone.</p>' +
+  '<p class="sub">Your starting point, your path, and everything Anchor has learned about you — gone from this device. This can’t be undone.</p>' +
   '<div class="grow"></div><div class="stack">' +
   '<button class="btn btn-ghost" data-act="eraseYes" style="color:var(--bad);border-color:var(--bad)">Yes, erase it all</button>' +
   '<button class="btn btn-primary" data-act="goProfile">Keep my data</button></div>';
@@ -934,11 +1078,11 @@ SCREENS.erase = () => topbar('goProfile') +
 SCREENS.about = () => topbar('goHome') +
   '<h2>About Anchor</h2>' +
   '<div class="stack" style="gap:14px">' +
-  '<p class="sub" style="margin:0;max-width:none">Anchor is a real-time companion for the moment anxiety starts to rise. It doesn’t hand you a menu — it learns your pattern and picks what to try: body first, then the fear, the thought, the loop, what’s in your control, and always one small action at the end.</p>' +
+  '<p class="sub" style="margin:0;max-width:none">Anchor is a real-time companion for the moment anxiety starts to rise. You tell it what’s happening; it recognizes the anxiety with you, picks the right path — the fear, the loop, what’s in your control, or one step past avoidance — and always lands on one small real-world action. Then it learns whether you took it.</p>' +
+  '<div class="note"><strong>The goal isn’t to make anxiety disappear.</strong> The goal is to stop anxiety from choosing your next move.</div>' +
   '<div class="note"><strong>What Anchor is not:</strong> it doesn’t diagnose anything and it isn’t a replacement for therapy or professional care.</div>' +
   '<div class="note"><strong>If you’re in crisis</strong> or having thoughts of hurting yourself: in the US, call or text <strong>988</strong> (Suicide &amp; Crisis Lifeline), anytime.</div>' +
   '<div class="note"><strong>Privacy:</strong> everything stays in this browser, on this device. Nothing is sent anywhere.</div>' +
-  '<div class="note"><strong>The goal</strong> is that you need Anchor less over time — the tools become yours.</div>' +
   '</div><div class="grow"></div>';
 
 /* ============ router + actions ============ */
@@ -948,69 +1092,124 @@ function go(screen){
   clearBreath();
   S.screen = screen;
   app.innerHTML = '<div class="screen">' + SCREENS[screen]() + '</div>';
-  if(screen === 'checkinIntensity') bindSlider('intensity');
+  if(screen === 'intensity') bindSlider('intensity');
   if(screen === 'debrief') bindSlider('after');
   if(screen === 'tool' && S.tool.name === 'body') runBreathing();
   window.scrollTo(0,0);
 }
 function rerenderTool(){ go('tool'); }
 
-function readInput(id){
-  const el = document.getElementById(id);
-  return el ? el.value.trim() : '';
-}
-
 const ACTS = {
   /* nav */
-  goHome(){ go('home'); },
-  goHomeSkip(){ meta.onboarded = true; store.set('anchor.meta', meta); go('home'); },
+  goHome(){ go(dueFollowup() ? 'followup' : 'home'); },
   goProfile(){ go('profile'); },
   goHistory(){ go('history'); },
   goAbout(){ go('about'); },
-  skipIntake(){ meta.onboarded = true; store.set('anchor.meta', meta); go('home'); },
-  startIntake(){ startIntake(); },
+  startOb(){ startOb(); },
+  skipOb(){ meta.onboarded2 = true; store.set('anchor.meta', meta); go('home'); },
   exitSession(){ go('home'); },
+  rising(){ go('situation'); },
+  backIntensity(){ go('intensity'); },
+  toRecognizeBack(){ go('recognize'); },
+  toIdentifyBack(){ go('identify'); },
 
-  /* intake */
-  chip(val, el){
-    const st = INTAKE_STEPS[S.intake.step];
-    const opt = st.options[+val];
-    const arr = S.intake.data[st.key];
-    const i = arr.indexOf(opt);
-    if(i >= 0) arr.splice(i,1); else arr.push(opt);
+  /* onboarding */
+  obChip(val, el){
+    const st = OB_STEPS[S.ob.step];
+    const stored = st.keys ? st.keys[+val] : st.options[+val];
+    if(!st.multi){
+      S.ob.data[st.key] = stored;
+      document.querySelectorAll('[data-act=obChip]').forEach(c => c.classList.remove('on'));
+      el.classList.add('on');
+      return;
+    }
+    const arr = S.ob.data[st.key];
+    const i = arr.indexOf(stored);
+    if(i >= 0) arr.splice(i,1); else arr.push(stored);
     el.classList.toggle('on');
   },
-  intakeBack(){ S.intake.step--; go('intake'); },
-  intakeNext(){
-    const st = INTAKE_STEPS[S.intake.step];
-    if(st.type === 'name') S.intake.data.name = readInput('intake-input');
-    if(st.type === 'text') S.intake.data.goal = readInput('intake-input');
-    if(S.intake.step < INTAKE_STEPS.length - 1){ S.intake.step++; go('intake'); }
+  obBack(){ S.ob.step--; go('ob'); },
+  obNext(){
+    if(S.ob.step < OB_STEPS.length - 1){ S.ob.step++; go('ob'); }
     else {
-      profile = S.intake.data;
-      store.set('anchor.profile', profile);
-      meta.onboarded = true; store.set('anchor.meta', meta);
-      go('home');
+      profile = S.ob.data;
+      store.set('anchor.profile2', profile);
+      meta.onboarded2 = true; store.set('anchor.meta', meta);
+      go('startpoint');
     }
   },
 
-  /* home entries */
-  rising(){ go('checkinContext'); },
-  pickContext(val){ S.pendingCtx = val; go('checkinIntensity'); },
-  beginSession(){
-    const v = +((document.getElementById('intensity') || {}).value || 6);
-    startSession(S.pendingCtx || 'unknown', v);
+  /* follow-up */
+  stepAnswer(val){
+    const rec = sessions.find(r => r.at === pending.at);
+    if(rec){ rec.stepDone = val; store.set('anchor.sessions2', sessions); }
+    applyPts(pending.situation, pending.path, val === 'yes' ? 3 : (val === 'partly' ? 1 : -1));
+    S.lastStep = val;
+    pending = null; store.del('anchor.pending');
+    go('followupDone');
   },
+
+  /* check-in */
+  pickSituation(val){
+    if(val === 'other'){ go('freeText'); return; }
+    S.pendingSit = val; S.pendingNote = null;
+    go('intensity');
+  },
+  freeNext(){
+    const t = readInput('free-input');
+    if(safetyCheck(t)) return;
+    S.pendingSit = t ? mapText(t) : 'other';
+    S.pendingNote = t || null;
+    go('intensity');
+  },
+  toRecognize(){
+    S.pendingIntensity = +((document.getElementById('intensity') || {}).value || 6);
+    go('recognize');
+  },
+  oneBreath(){
+    clearBreath();
+    const c = document.getElementById('mcircle'), p = document.getElementById('mphase');
+    const b = document.getElementById('onebreath-btn');
+    if(!c) return;
+    if(b) b.disabled = true;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    S.breathTimers.push(setTimeout(() => {
+      p.textContent = 'In through your nose…';
+      if(!reduced){ c.style.transition = 'transform 4000ms cubic-bezier(.4,0,.4,1)'; c.style.transform = 'scale(1.2)'; }
+    }, 100));
+    S.breathTimers.push(setTimeout(() => {
+      p.textContent = 'Slowly out through your mouth…';
+      if(!reduced){ c.style.transition = 'transform 6000ms cubic-bezier(.45,0,.55,1)'; c.style.transform = 'scale(1)'; }
+    }, 4100));
+    S.breathTimers.push(setTimeout(() => {
+      p.textContent = 'Good.';
+      if(b) b.disabled = false;
+    }, 10300));
+  },
+  toIdentify(){ go('identify'); },
+  pickIdentify(val){
+    if(val === 'unsure'){ go('clarify'); return; }
+    startSession(val);
+  },
+  pickClarify(val){ startSession(val); },
+
+  /* home shortcuts */
   justHelp(){
-    let ctx = 'unknown';
-    if(sessions.length) ctx = sessions[0].context;
-    startSession(ctx, 8);
+    S.pendingSit = sessions.length ? sessions[0].situation : 'other';
+    S.pendingNote = null; S.pendingIntensity = 9;
+    S.sess = {
+      situation: S.pendingSit, note: null, intensity: 9, identify: 'fast',
+      seq: ['body','action'], i: 0, action: null, after: null, controlMine: []
+    };
+    openTool('body');
   },
   inLoop(){
-    S.sess = { context:'after', intensity:6, seq:['loop'], i:0, used:['loop'],
-      chosenAction:null, after:null, feel:null, saved:false };
-    S.tool = { name:'loop', step:0, data:{} };
-    go('tool');
+    S.pendingSit = sessions.length ? sessions[0].situation : 'other';
+    S.sess = {
+      situation: S.pendingSit, note: null, intensity: 6, identify: 'loop',
+      seq: ['loop'], i: 0, action: null, after: null, controlMine: []
+    };
+    openTool('loop');
   },
 
   /* body */
@@ -1028,95 +1227,89 @@ const ACTS = {
   },
   copePick(val, el){
     const d = S.tool.data; d.copes = d.copes || [];
-    const opt = COPES[+val];
-    const i = d.copes.indexOf(opt);
-    if(i >= 0) d.copes.splice(i,1); else d.copes.push(opt);
+    const t = el.textContent.replace(/^✓ /,'');
+    const i = d.copes.indexOf(t);
+    if(i >= 0) d.copes.splice(i,1); else d.copes.push(t);
     el.classList.toggle('on');
   },
   fearNext(){
     const d = S.tool.data;
     if(S.tool.step === 0){
       const typed = readInput('fear-input');
+      if(safetyCheck(typed)) return;
       if(typed) d.fear = typed;
+      if(d.fear) S.sess.fear = d.fear;
     }
-    if(S.tool.step === 2) d.firstStep = readInput('fear-step');
+    if(S.tool.step === 1){
+      const typed = readInput('cope-input');
+      if(safetyCheck(typed)) return;
+      if(typed){ d.copes = d.copes || []; d.copes.push(typed); }
+    }
     S.tool.step++;
     rerenderTool();
   },
 
-  /* thought */
-  thoughtPick(val, el){
-    document.querySelectorAll('[data-act=thoughtPick]').forEach(c => c.classList.remove('on'));
-    el.classList.add('on');
-    S.tool.data.thought = el.textContent.replace(/^✓ /,'');
-  },
-  thoughtNext(){
-    const d = S.tool.data;
-    if(S.tool.step === 0){
-      const typed = readInput('thought-input');
-      if(typed) d.thought = typed;
-      S.tool.step = 1;
-    } else if(S.tool.step === 2 && d.kind === 'fact'){
-      d.factStep = readInput('fact-step');
-      S.tool.step = 3;
-    } else {
-      S.tool.step++;
-    }
-    rerenderTool();
-  },
-  thoughtKind(val){ S.tool.data.kind = val; S.tool.step = 2; rerenderTool(); },
-  evPick(val, el){
-    const d = S.tool.data; d.evidence = d.evidence || [];
-    const t = el.textContent.replace(/^✓ /,'');
-    const i = d.evidence.indexOf(t);
-    if(i >= 0) d.evidence.splice(i,1); else d.evidence.push(t);
-    el.classList.toggle('on');
-  },
-  balPick(val, el){
-    document.querySelectorAll('[data-act=balPick]').forEach(c => c.classList.remove('on'));
-    el.classList.add('on');
-    S.tool.data.balanced = BALANCED[+val];
-  },
-
   /* loop */
   loopA(val){
-    if(val === 'first'){ S.tool.step = 3; }
-    else S.tool.step = 1;
+    S.tool.step = (val === 'first') ? 3 : 1;
     rerenderTool();
   },
   loopB(val){
-    if(val === 'yes'){ S.tool.step = 3; }
-    else S.tool.step = 2;
+    S.tool.step = (val === 'yes') ? 3 : 2;
     rerenderTool();
   },
-  loopToThought(){
-    if(S.sess.seq.length === 1){
-      S.sess.seq = ['loop','thought','action'];
-    } else if(!S.sess.seq.includes('thought')){
-      S.sess.seq.splice(S.sess.i + 1, 0, 'thought');
-    }
+  loopToFear(){
+    const s = S.sess;
+    const rest = s.intensity >= 8 ? ['fear','action'] : ['fear','control','action'];
+    s.seq = s.seq.slice(0, s.i + 1).concat(rest);
     nextTool();
   },
   loopBridge(val){
-    S.sess.seq = ['loop', val === 'control' ? 'control' : 'action'];
-    if(val === 'control') S.sess.seq.push('action');
+    S.sess.seq = ['loop'].concat(val === 'control' ? ['control','action'] : ['action']);
     nextTool();
   },
   loopOkay(){
     S.sess.after = Math.max(0, S.sess.intensity - 2);
-    S.sess.feel = 'better';
-    recordSession();
+    finishRecord();
     go('calm');
   },
 
   /* control */
   sortCard(val){
     const d = S.tool.data;
-    d[val].push(d.cards[d.idx]);
-    d.idx++;
+    const c = d.cards[d.idx];
+    if(c.truth && val !== c.truth && d.tries === 0){
+      d.tries = 1;
+      d.warn = c.truth === 'not'
+        ? 'Take another look. You can control what you do — not what someone else thinks or does.'
+        : 'Look again — this one actually is yours. It’s something you can do.';
+      rerenderTool();
+      return;
+    }
+    const col = (c.truth && val !== c.truth) ? c.truth : val;
+    d[col].push(c.t);
+    d.idx++; d.tries = 0; d.warn = null;
     rerenderTool();
   },
-  sortSkip(){ S.tool.data.idx++; rerenderTool(); },
+  sortSkip(){
+    const d = S.tool.data;
+    d.idx++; d.tries = 0; d.warn = null;
+    rerenderTool();
+  },
+
+  /* avoid */
+  wantPick(val, el){
+    document.querySelectorAll('[data-act=wantPick]').forEach(c => c.classList.remove('on'));
+    el.classList.add('on');
+    S.tool.data.want = el.textContent.replace(/^✓ /,'');
+  },
+  avoidNext(){
+    const typed = readInput('want-input');
+    if(safetyCheck(typed)) return;
+    if(typed) S.tool.data.want = typed;
+    S.tool.step = 1;
+    rerenderTool();
+  },
 
   /* action */
   actionPick(val, el){
@@ -1126,26 +1319,41 @@ const ACTS = {
   },
   actionChosen(){
     const typed = readInput('action-input');
+    if(safetyCheck(typed)) return;
     const a = typed || S.tool.data.action;
     if(!a) return;
-    S.sess.chosenAction = a;
+    if(/^whether\b/i.test(a) || /\s+or\s+/i.test(a)){
+      const halves = a.replace(/^whether\s+/i,'').split(/\s+or\s+/i).map(h => h.trim()).filter(Boolean).slice(0,3);
+      if(halves.length >= 2){
+        S.decide = { halves };
+        go('decide');
+        return;
+      }
+    }
+    S.sess.action = a;
+    go('debrief');
+  },
+  decidePick(val){
+    S.sess.action = concreteFor(S.decide.halves[+val]);
+    S.decide = null;
     go('debrief');
   },
 
   /* debrief */
-  feel(val){
+  afterDone(){
     S.sess.after = +((document.getElementById('after') || {}).value || S.sess.intensity);
-    S.sess.feel = val;
-    recordSession();
-    go(S.sess.chosenAction ? 'commit' : 'calm');
+    finishRecord();
+    go(S.sess.action ? 'commit' : 'calm');
   },
 
   /* erase */
   eraseAsk(){ go('erase'); },
   eraseYes(){
-    ['anchor.profile','anchor.sessions','anchor.toolScores','anchor.meta'].forEach(store.del);
-    profile = null; sessions = []; scores = {}; meta = {};
-    S = { screen:'welcome', intake:null, sess:null, tool:null, breathTimers:[] };
+    ['anchor.profile2','anchor.sessions2','anchor.pathScores','anchor.pending',
+     'anchor.profile','anchor.sessions','anchor.toolScores','anchor.meta'].forEach(store.del);
+    profile = null; sessions = []; scores = {}; meta = {}; pending = null;
+    S = { screen:'welcome', ob:null, sess:null, tool:null, pendingSit:null, pendingNote:null,
+      pendingIntensity:6, decide:null, lastStep:null, breathTimers:[] };
     go('welcome');
   }
 };
