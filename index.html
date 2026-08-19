@@ -307,86 +307,113 @@ let scores   = store.get('anchor.pathScores', {});
 let meta     = store.get('anchor.meta', {});
 let pending  = store.get('anchor.pending', null);
 
-/* ============ situations (the aunt's 8 categories, her content) ============ */
-const SIT_ORDER = ['social','test','performance','interview','flight','date','conflict','other'];
+/* ============ situations (the aunt's categories & content pools — v3 spec) ============ */
+/* picker order; 'dating' expands to date|relationship via one sub-tap */
+const PICKER = ['social','test','performance','dating','interview','flight','alone','health','conflict','other','unsure'];
+const GENERIC = {
+  fears:['Something bad will happen','I won’t be able to handle it','I’ll lose control','I don’t even know — it just feels bad'],
+  mine:['What I do next','My next small step','Where I put my attention right now','Asking for help if I need it'],
+  not:['The future','Other people’s reactions','What already happened','Every feeling in my body'],
+  steps:['Take one slow breath and stand up','Drink some water, slowly','Step outside for two minutes','Do the next small thing in front of you'],
+  want:'Do the thing anyway'
+};
 const SIT = {
   social: {
     label:'Social situation', hint:'party, hangout, new people, school, group chat…',
     fears:['I won’t know what to say','I’ll be awkward','They’ll judge me','I’ll be left out','They’ll notice I’m anxious','I’ll say something stupid'],
-    mine:['Showing up','Saying hello','Asking someone a question','Staying instead of immediately leaving','What I choose to do next'],
-    not:['What they think of me','Whether everyone likes me','What somebody else says','Whether there are awkward moments'],
-    steps:['Walk in','Say hello to one person','Ask one question','Stay for another five minutes'],
+    mine:['Showing up','Saying hello','Asking a question','Staying instead of immediately leaving','What I do next'],
+    not:['What they think of me','Whether everyone likes me','What somebody says','Awkward moments','Their reaction'],
+    steps:['Walk in','Say hello to one person','Ask one question','Stay another five minutes'],
     want:'Go — and actually be there'
   },
   test: {
-    label:'Test / exam', hint:'exam, quiz, school pressure…',
+    label:'Test / school', hint:'exam, quiz, school pressure…',
     fears:['I’ll fail','My mind will go blank','I won’t finish in time','I won’t remember what I studied','I’ll panic during the test'],
-    mine:['Reading the question carefully','Starting with what I know','Moving on if I’m stuck','Bringing my attention back to the test'],
-    not:['The exact questions','The final result right now','How everybody else performs'],
-    steps:['Open the test','Read the first question','Start with what you know'],
+    mine:['Starting','Reading one question at a time','Moving on if I’m stuck','Returning my attention to the test'],
+    not:['The exact questions','How hard it is','Other people’s performance','The final grade right now','Feeling completely calm'],
+    steps:['Read the first question','Start with what I know','Work on the next question'],
     want:'Take the test'
   },
   performance: {
     label:'Presentation / performance', hint:'public speaking, audition, sports, stage…',
     fears:['I’ll freeze','I’ll forget what I wanted to say','They’ll notice I’m nervous','I’ll make a mistake','I’ll embarrass myself'],
-    mine:['Starting','Speaking at my own pace','Focusing on my first point','Continuing even if I make a mistake'],
-    not:['What the audience thinks','Whether somebody notices I’m nervous','Other people’s reactions'],
-    steps:['Walk up','Take your position','Say your first line'],
+    mine:['Showing up','Starting','Focusing on what I’m doing','Continuing after a mistake'],
+    not:['The audience’s reaction','Whether someone notices I’m nervous','Perfection','Feeling completely calm'],
+    steps:['Take my position','Say my first line','Start the first minute'],
     want:'Get up and do it'
   },
+  date: {
+    label:'Date / meeting someone', hint:'',
+    fears:['They won’t like me','There’ll be an awkward silence','I won’t know what to say','I’ll be rejected'],
+    mine:['Showing up','Saying hello','Asking a genuine question','Listening','Staying despite some awkwardness'],
+    not:['Whether they like me','The chemistry','Their opinion','Awkward silence','Whether there’s another date'],
+    steps:['Walk in','Say hello','Ask one genuine question','Stay for the first ten minutes'],
+    want:'Show up for the date'
+  },
+  relationship: {
+    label:'Relationship / breakup', hint:'',
+    fears:['I sent a message and they haven’t answered','I think I said something wrong','I’ll be rejected'],
+    mine:['Whether I send a message','How I respond','What I do next','Who I talk to','How I take care of myself'],
+    not:['Whether they reply','What they think','Whether they miss me','Their decision','How the relationship turns out'],
+    steps:['Put the phone down for five minutes','Write the message without sending it yet','Do one normal thing I need to do'],
+    want:'Say what I mean — once'
+  },
   interview: {
-    label:'Job interview', hint:'interview, application, work…',
+    label:'Work / interview', hint:'interview, application, work stress…',
     fears:['I won’t know what to say','I’ll look nervous','I’ll give a bad answer','They won’t like me','I won’t get the job'],
-    mine:['Showing up','Listening to the question','Answering as clearly as I can','Taking a moment to think','Asking a question'],
-    not:['Who else applied','What the interviewer ultimately thinks','Whether I’m selected'],
+    mine:['Showing up','Listening','Taking a moment before answering','Answering as clearly as I can','Asking a question'],
+    not:['The other candidates','The interviewer’s final opinion','Whether I get the job'],
     steps:['Enter the room or the call','Say hello','Answer the first question'],
     want:'Do the interview'
   },
   flight: {
-    label:'Flight / travel', hint:'flying, airports, being far from home…',
+    label:'Flying / travel', hint:'flying, airports, being far from home…',
     fears:['Something will happen to the plane','Turbulence will scare me','I’ll panic and won’t be able to leave','I’ll lose control','I won’t be able to handle how I feel'],
-    mine:['Going to the gate','Boarding','Staying in my seat','Using my breathing if it helps','Bringing my attention back to the present moment'],
-    not:['Turbulence','The weather','Every sensation in my body','Flying the plane myself'],
-    steps:['Walk to the gate','Board the plane','Sit down','Focus on the next minute, not the whole flight'],
+    mine:['Going to the gate','Boarding','Staying in my seat','Following the crew’s instructions','Where I place my attention'],
+    not:['Turbulence','The weather','The plane’s sounds','Exactly how the flight feels'],
+    steps:['Walk to the gate','Board the plane','Sit down and buckle up','Focus on the next few minutes'],
     want:'Take the flight',
     evenIf:'I can’t control everything that happens. I can handle the next moment.'
   },
-  date: {
-    label:'Date / relationship', hint:'a date, a message, waiting for a reply…',
-    fears:['They won’t like me','There’ll be an awkward silence','I won’t know what to say','I’ll be rejected','I sent a message and they haven’t answered','I think I said something wrong'],
-    mine:['Showing up','Being genuine','Asking a question','Sending one message rather than repeatedly checking','Giving the other person space','What I do next'],
-    not:['Whether they like me','When they reply','What they think','Whether they want another date'],
-    steps:['Walk into the date','Ask one genuine question','Send one honest message','Put the phone away and let the message sit'],
-    want:'Show up — or say what I mean'
+  alone: {
+    label:'Being alone', hint:'evening alone, empty house, on my own…',
+    fears:[],
+    mine:['Staying where I am','Doing a normal activity','Choosing what I do next','Checking a real concern once — not repeatedly'],
+    not:['Every sound','Every anxious thought','How quickly the anxiety fades','Being 100% certain nothing could happen'],
+    steps:['Stay another five minutes','Continue one normal activity','Move on without checking again'],
+    want:'Stay — and be okay on my own'
+  },
+  health: {
+    label:'Health / medical', hint:'symptoms, appointments, waiting for results…',
+    fears:[],
+    mine:GENERIC.mine, not:GENERIC.not, steps:GENERIC.steps,
+    want:'Deal with it one step at a time'
   },
   conflict: {
     label:'Difficult conversation', hint:'conflict, confrontation, saying a hard thing…',
     fears:['They’ll get angry','I’ll upset them','I won’t know what to say','They’ll reject me','The conversation will go badly'],
-    mine:['What I say','How I say it','Being clear','Listening','Setting a boundary if needed'],
+    mine:['What I say','How I say it','Listening','Being clear','Setting an appropriate boundary'],
     not:['Their reaction','Whether they agree','What they feel','What they say'],
-    steps:['Start the conversation','Say the first sentence','Say clearly what you need to say'],
+    steps:['Start the conversation','Say the first sentence','State clearly what I need to say'],
     want:'Have the conversation'
   },
-  other: {
-    label:'Something else', hint:'tell me in a few words',
-    fears:['Something bad will happen','I won’t be able to handle it','I’ll lose control','I don’t even know — it just feels bad'],
-    mine:['What I do next','My next small step','Where I put my attention right now','Asking for help if I need it'],
-    not:['The future','Other people’s reactions','What already happened','Every feeling in my body'],
-    steps:['Take one slow breath and stand up','Drink some water, slowly','Step outside for two minutes','Do the next small thing in front of you'],
-    want:'Do the thing anyway'
-  }
+  other: Object.assign({ label:'Something else', hint:'tell me in a few words' }, GENERIC),
+  unsure: Object.assign({ label:'I’m not sure — it came out of nowhere', hint:'no clear reason. It’s just here' }, GENERIC)
 };
 const EVEN_IF_DEFAULT = 'Even if something I don’t want happens — I can handle what comes next.';
 
 /* map free text ("Something else") to the closest situation */
 const TEXT_MAP = [
-  ['test',        /\b(test|exam|quiz|midterm|finals?|grade|study|studying)\b/i],
-  ['interview',   /\b(interview|job|hiring|application|applied?)\b/i],
-  ['performance', /\b(present|presentation|speech|perform|performance|stage|audition|recital|tryout|game|match)\b/i],
-  ['flight',      /\b(fly|flying|flight|plane|airplane|airport|turbulence|travel|trip)\b/i],
-  ['date',        /\b(date|dating|crush|boyfriend|girlfriend|partner|ghost(ed|ing)?|repl(y|ied|ies)|left on read|text(ed)? back|answer(ed|ing)?|respond(ed)?|message[ds]?)\b/i],
-  ['conflict',    /\b(fight|fighting|argu\w*|confront\w*|conflict|angry|mad at|yell\w*|boss|breakup|broke up)\b/i],
-  ['social',      /\b(part(y|ies)|friends?|people|social|school|class|group|hang(ing)?( ?out)?|meet(ing)? new)\b/i]
+  ['health',       /\b(doctor|hospital|medical|symptom\w*|sick|illness|diagnos\w*|clinic|surgery|scan|biopsy)\b/i],
+  ['test',         /\b(test|exam|quiz|midterm|finals?|grade|study|studying)\b/i],
+  ['interview',    /\b(interview|job|hiring|application|applied?)\b/i],
+  ['performance',  /\b(present|presentation|speech|perform|performance|stage|audition|recital|tryout|game|match)\b/i],
+  ['flight',       /\b(fly|flying|flight|plane|airplane|airport|turbulence|travel|trip)\b/i],
+  ['relationship', /\b(breakup|broke up|ex\b|ghost(ed|ing)?|repl(y|ied|ies)|left on read|text(ed)? back|answer(ed|ing)?|respond(ed)?|message[ds]?)\b/i],
+  ['date',         /\b(date|dating|crush|boyfriend|girlfriend|partner)\b/i],
+  ['conflict',     /\b(fight|fighting|argu\w*|confront\w*|conflict|angry|mad at|yell\w*|boss)\b/i],
+  ['alone',        /\b(alone|by myself|lonely|empty house|home alone|on my own)\b/i],
+  ['social',       /\b(part(y|ies)|friends?|people|social|school|class|group|hang(ing)?( ?out)?|meet(ing)? new)\b/i]
 ];
 function mapText(t){
   for(const [k, re] of TEXT_MAP){ if(re.test(t)) return k; }
@@ -502,16 +529,17 @@ function finishRecord(){
   const at = Date.now();
   const rec = {
     at, situation: s.situation, note: s.note, identify: s.identify,
+    fear: s.fear || null,
     path: s.seq.slice(), before: s.intensity,
     after: (typeof s.after === 'number') ? s.after : null,
-    action: s.action || null, stepDone: null
+    action: s.action || null, stepDone: null, howWent: null
   };
   sessions.unshift(rec);
   if(sessions.length > 100) sessions = sessions.slice(0, 100);
   store.set('anchor.sessions2', sessions);
   if(rec.after != null) applyPts(s.situation, s.seq, Math.max(-2, Math.min(2, s.intensity - rec.after)));
   if(rec.action){
-    pending = { at, situation: s.situation, action: rec.action, path: s.seq.slice() };
+    pending = { at, recAt: at, situation: s.situation, action: rec.action, path: s.seq.slice() };
     store.set('anchor.pending', pending);
   }
   return rec;
@@ -564,6 +592,24 @@ function readInput(id){
   return el ? el.value.trim() : '';
 }
 function pack(){ return SIT[S.sess ? S.sess.situation : (S.pendingSit || 'other')] || SIT.other; }
+function sample(arr, n){
+  const a = arr.slice();
+  for(let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a.slice(0, n);
+}
+/* a smaller version of a step — only reductions the spec authorizes, else null (user writes their own) */
+function smallerStep(action, sit){
+  if(/^walk in/i.test(action)) return 'Walk to the entrance';
+  if(/^stay\b.*\b(minutes?|activity)/i.test(action)) return 'Stay 2 more minutes';
+  if(/^board the plane$/i.test(action)) return 'Walk to the gate';
+  const steps = (SIT[sit] || SIT.other).steps;
+  const i = steps.indexOf(action);
+  if(i > 0) return steps[i - 1];
+  return null;
+}
 
 /* ============ screens ============ */
 const SCREENS = {};
@@ -646,45 +692,87 @@ SCREENS.home = () => {
 /* ---- follow-up on the last step ---- */
 SCREENS.followup = () => topbar() +
   '<div class="eyebrow">Last time</div>' +
-  '<h2>Did you take your step?</h2>' +
+  '<h2>Did you do your one step?</h2>' +
   '<div class="note" style="margin-bottom:8px">Your step was: <strong>' + esc(pending.action) + '</strong></div>' +
   '<p class="sub">This matters more than the anxiety number.</p>' +
   '<div class="grow"></div><div class="stack">' +
-  '<button class="btn btn-primary" data-act="stepAnswer" data-val="yes">Yes</button>' +
-  '<button class="btn btn-ghost" data-act="stepAnswer" data-val="partly">Partly</button>' +
-  '<button class="btn btn-ghost" data-act="stepAnswer" data-val="no">No</button>' +
+  '<button class="btn btn-primary" data-act="stepAnswer" data-val="yes">I did it</button>' +
+  '<button class="btn btn-ghost" data-act="stepAnswer" data-val="notyet">Not yet</button>' +
   '</div><div class="grow"></div>';
+
+SCREENS.followupHow = () => topbar() +
+  '<div class="eyebrow">That’s the win</div>' +
+  '<h2>You did it — even with the anxiety there. That’s what counts.</h2>' +
+  '<p class="sub">One more tap: how did it go?</p>' +
+  '<div class="grow"></div><div class="stack">' +
+  '<button class="btn btn-ghost" data-act="howWent" data-val="easier">Easier than I expected</button>' +
+  '<button class="btn btn-ghost" data-act="howWent" data-val="expected">About what I expected</button>' +
+  '<button class="btn btn-ghost" data-act="howWent" data-val="harder">Harder than I expected</button>' +
+  '</div><div class="grow"></div>';
+
+SCREENS.smaller = () => {
+  const sug = smallerStep(pending.action, pending.situation);
+  return topbar() +
+    '<div class="eyebrow">No problem</div>' +
+    '<h2>Want to make the step smaller?</h2>' +
+    '<div class="note" style="margin-bottom:14px">The step was: <strong>' + esc(pending.action) + '</strong></div>' +
+    '<div class="stack">' +
+    (sug ? '<button class="btn btn-primary" data-act="smallerPick" data-val="sug">' + esc(sug) + '</button>' : '') +
+    '<input type="text" id="smaller-input" placeholder="…or write a smaller version you could actually do" autocomplete="off">' +
+    '<button class="btn ' + (sug ? 'btn-ghost' : 'btn-primary') + '" data-act="smallerPick" data-val="typed">This is my new step</button>' +
+    '</div>' +
+    '<div class="grow"></div><div class="stack">' +
+    '<button class="btn btn-quiet" data-act="smallerKeep">Keep the original — ask me again later</button>' +
+    '<button class="btn btn-quiet" data-act="smallerDrop">Let it go for now</button>' +
+    '</div>';
+};
 
 SCREENS.followupDone = () => {
   const v = S.lastStep;
-  const msg = v === 'yes'
-    ? ['You took the step.','That’s the whole win — the anxiety didn’t choose for you.']
-    : v === 'partly'
-    ? ['Partly counts.','You moved. Next time we’ll find an even smaller first step.']
-    : ['That’s okay.','It happens to everyone. Next time we’ll pick a smaller step — one anxiety can’t block.'];
+  const msg = v === 'smaller'
+    ? ['Smaller counts.','Your new step: ' + S.lastAction + '. I’ll ask you about it later.']
+    : v === 'drop'
+    ? ['That’s okay.','It happens to everyone. Next time we’ll pick a step anxiety can’t block.']
+    : ['Noted.','I’ll check in with you about it later.'];
   return '<div class="action-final">' +
-    '<div class="action-tag">' + (v === 'yes' ? 'That’s the win' : 'Noted') + '</div>' +
-    '<div class="action-word">' + msg[0] + '</div>' +
-    '<p class="sub" style="margin:6px auto 0;text-align:center">' + msg[1] + '</p>' +
+    '<div class="action-tag">Okay</div>' +
+    '<div class="action-word">' + esc(msg[0]) + '</div>' +
+    '<p class="sub" style="margin:6px auto 0;text-align:center">' + esc(msg[1]) + '</p>' +
     '</div>' +
     '<button class="btn btn-quiet" data-act="goHome">close</button>';
 };
 
 /* ---- check-in: situation → intensity → recognize → identify ---- */
+const PICKER_ROW = {
+  dating: { label:'Dating / relationship', hint:'a date, a message, waiting for a reply, a breakup…', obKey:'date' }
+};
 SCREENS.situation = () => {
   const picked = (profile && profile.situations) || [];
-  const order = SIT_ORDER.filter(k => k !== 'other')
-    .sort((a,b) => (picked.includes(b) ? 1 : 0) - (picked.includes(a) ? 1 : 0))
-    .concat(['other']);
+  const last = ['other','unsure'];
+  const order = PICKER.filter(k => !last.includes(k))
+    .sort((a,b) => {
+      const ka = PICKER_ROW[a] ? PICKER_ROW[a].obKey : a, kb = PICKER_ROW[b] ? PICKER_ROW[b].obKey : b;
+      return (picked.includes(kb) ? 1 : 0) - (picked.includes(ka) ? 1 : 0);
+    })
+    .concat(last);
   return topbar('goHome') +
     '<div class="eyebrow">Okay. I’m with you.</div>' +
     '<h2>What’s making you anxious right now?</h2>' +
     '<div class="spacer"></div>' +
-    '<div class="stack" style="gap:10px">' + order.map(k =>
-      '<button class="btn btn-ghost btn-list" data-act="pickSituation" data-val="' + k + '">' +
-      esc(SIT[k].label) + '<small>' + esc(SIT[k].hint) + '</small></button>'
-    ).join('') + '</div><div class="spacer"></div>';
+    '<div class="stack" style="gap:10px">' + order.map(k => {
+      const row = PICKER_ROW[k] || SIT[k];
+      return '<button class="btn btn-ghost btn-list" data-act="pickSituation" data-val="' + k + '">' +
+        esc(row.label) + (row.hint ? '<small>' + esc(row.hint) + '</small>' : '') + '</button>';
+    }).join('') + '</div><div class="spacer"></div>';
 };
+
+SCREENS.dateSub = () => topbar('rising') +
+  '<h2>Which is it right now?</h2>' +
+  '<div class="spacer"></div>' +
+  '<div class="stack" style="gap:10px">' +
+  '<button class="btn btn-ghost btn-list" data-act="pickSituation" data-val="date">A date / meeting someone</button>' +
+  '<button class="btn btn-ghost btn-list" data-act="pickSituation" data-val="relationship">A relationship — a message, a reply, a breakup</button>' +
+  '</div><div class="grow"></div>';
 
 SCREENS.freeText = () => topbar('rising') +
   '<h2>Tell me what’s happening — a few words is plenty.</h2>' +
@@ -804,8 +892,8 @@ TOOL_VIEWS.fear = () => {
   if(st === 0){
     return head + '<h2>What are you afraid will happen?</h2>' +
       '<p class="sub">Name it. That alone takes some of its power.</p>' +
-      chips(p.fears, d.fear ? [d.fear] : [], 'fearPick') +
-      '<input type="text" id="fear-input" placeholder="…or say it your way" autocomplete="off">' +
+      (p.fears.length ? chips(p.fears, d.fear ? [d.fear] : [], 'fearPick') : '') +
+      '<input type="text" id="fear-input" placeholder="' + (p.fears.length ? '…or say it your way' : 'Say it in your words') + '" autocomplete="off">' +
       '<div class="grow"></div><div class="spacer"></div>' +
       '<button class="btn btn-primary" data-act="fearNext">Continue</button>';
   }
@@ -813,7 +901,7 @@ TOOL_VIEWS.fear = () => {
     return head + '<h2>If that actually happened — what could you do next?</h2>' +
       '<p class="sub">Not “it won’t happen.” If it did — how would you handle the next moment?</p>' +
       chips(['Ask for help','Take a break, then try again','Apologize once and move on',
-        'Leave, regroup, come back','Laugh it off','Talk to someone I trust','Try a different way'],
+        'Laugh it off','Talk to someone I trust','Try a different way'],
         d.copes || [], 'copePick') +
       '<input type="text" id="cope-input" placeholder="…or your own way" autocomplete="off">' +
       '<div class="grow"></div><div class="spacer"></div>' +
@@ -851,7 +939,7 @@ TOOL_VIEWS.loop = () => {
     return head + '<div class="grow"></div>' +
       '<div class="card" style="text-align:center">' +
         '<h2>This is the anxiety loop — not a new problem to solve.</h2>' +
-        '<p class="sub" style="margin:10px auto 0">You don’t have to erase the thought. A thought can show up without being a fact. Just notice it: <em>that’s the loop again.</em> You’ve already done this lap.</p>' +
+        '<p class="sub" style="margin:10px auto 0">You don’t have to push the thought out of your head. A thought can be there without deciding what you do next. Just notice it: <em>that’s the loop again.</em> You’ve already done this lap.</p>' +
       '</div>' +
       '<div class="grow"></div>' +
       (S.sess.seq.length === 1
@@ -875,8 +963,9 @@ TOOL_VIEWS.control = () => {
   const d = S.tool.data, p = pack();
   const head = toolHeader();
   if(!d.cards){
-    const a = p.mine.map(t => ({t, truth:'mine'}));
-    const b = p.not.map(t => ({t, truth:'not'}));
+    /* 3 + 3, sampled from the pools so the exercise varies between uses */
+    const a = sample(p.mine, 3).map(t => ({t, truth:'mine'}));
+    const b = sample(p.not, 3).map(t => ({t, truth:'not'}));
     const cards = [];
     for(let i = 0; i < Math.max(a.length, b.length); i++){
       if(a[i]) cards.push(a[i]);
@@ -1013,7 +1102,7 @@ SCREENS.history = () => {
       s.before + ' → ' + s.after + '</span>';
     const mark = s.stepDone === 'yes' ? '<span class="stepmark yes">step ✓</span>' :
       s.stepDone === 'partly' ? '<span class="stepmark partly">step ±</span>' :
-      s.stepDone === 'no' ? '<span class="stepmark no">step —</span>' : '';
+      (s.stepDone === 'no' || s.stepDone === 'not_yet') ? '<span class="stepmark no">step —</span>' : '';
     return '<div class="sess-row"><span class="sess-when">' + when + '</span>' +
       '<span class="sess-what">' + esc(SIT[s.situation] ? SIT[s.situation].label : s.situation) +
       '<small>' + (s.action ? esc(s.action) : PATH_LABEL[s.identify] || '') + '</small></span>' +
@@ -1141,17 +1230,52 @@ const ACTS = {
 
   /* follow-up */
   stepAnswer(val){
-    const rec = sessions.find(r => r.at === pending.at);
-    if(rec){ rec.stepDone = val; store.set('anchor.sessions2', sessions); }
-    applyPts(pending.situation, pending.path, val === 'yes' ? 3 : (val === 'partly' ? 1 : -1));
-    S.lastStep = val;
+    const rec = sessions.find(r => r.at === (pending.recAt || pending.at));
+    if(val === 'yes'){
+      if(rec){ rec.stepDone = 'yes'; store.set('anchor.sessions2', sessions); }
+      applyPts(pending.situation, pending.path, 3);
+      go('followupHow');
+      return;
+    }
+    /* not yet — no penalty; offer a smaller step */
+    if(rec && !rec.stepDone){ rec.stepDone = 'not_yet'; store.set('anchor.sessions2', sessions); }
+    go('smaller');
+  },
+  howWent(val){
+    const rec = sessions.find(r => r.at === (pending.recAt || pending.at));
+    if(rec){ rec.howWent = val; store.set('anchor.sessions2', sessions); }
     pending = null; store.del('anchor.pending');
+    S.lastStep = 'yes';
+    go('home');
+  },
+  smallerPick(val){
+    let a = null;
+    if(val === 'sug') a = smallerStep(pending.action, pending.situation);
+    else a = readInput('smaller-input');
+    if(!a) return;
+    if(safetyCheck(a)) return;
+    pending = { at: Date.now(), recAt: pending.recAt || pending.at,
+      situation: pending.situation, action: a, path: pending.path };
+    store.set('anchor.pending', pending);
+    S.lastStep = 'smaller'; S.lastAction = a;
+    go('followupDone');
+  },
+  smallerKeep(){
+    pending.at = Date.now();
+    store.set('anchor.pending', pending);
+    S.lastStep = 'keep';
+    go('followupDone');
+  },
+  smallerDrop(){
+    pending = null; store.del('anchor.pending');
+    S.lastStep = 'drop';
     go('followupDone');
   },
 
   /* check-in */
   pickSituation(val){
     if(val === 'other'){ go('freeText'); return; }
+    if(val === 'dating'){ go('dateSub'); return; }
     S.pendingSit = val; S.pendingNote = null;
     go('intensity');
   },
