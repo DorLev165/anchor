@@ -110,12 +110,57 @@ or every uncertainty as a problem to solve → identify what's in my control →
 
 ---
 
-## Open questions for the product owner (content she has not provided yet)
+# v3 completions (2026-08-22) — all previously open content questions answered
 
-1. **HEALTH / MEDICAL** — no Control/Not/Steps/Fears pool was provided. Currently wired to the generic pool.
-2. **Fears lists** ("What are you afraid will happen?") for **BEING ALONE** and **RELATIONSHIP/BREAKUP** —
-   currently free-text only (alone) / minimal reuse of her earlier date items (relationship).
-3. **Dating / relationship** is one picker row per §3, but the pools separate DATE from RELATIONSHIP/BREAKUP —
-   implemented as one extra tap ("A date / meeting someone" vs "A relationship — a message, a reply, a breakup"). Confirm.
-4. **Smaller steps** — only her authored reductions plus "the previous step on the same ladder" are offered;
-   otherwise the user writes their own smaller version. Does she want a full smaller-step table per situation?
+## 15. HEALTH / MEDICAL
+
+Work on the anxiety and the uncertainty. **Never tell the user "It's just anxiety" and never state that a
+symptom is not medical.** (Implemented: this route overrides the RECOGNIZE second sentence with
+"Anxiety can make sensations louder and harder to read. That doesn't settle what any sensation means —
+it means anxiety is part of what you're feeling right now.")
+
+- **In my control:** Describing what I'm feeling clearly / Following medical advice I've already received /
+  Making an appropriate medical appointment if needed / Choosing whether to keep checking / What I do next.
+- **Not in my control:** Knowing with 100% certainty what every sensation means / How quickly a sensation
+  goes away / Every sensation my body produces / What a test result will be / What might happen in the future.
+- **Afraid will happen:** Something is seriously wrong with me / This feeling means something dangerous /
+  The symptom will get worse / A test will show something bad / I won't be able to cope if something is wrong.
+- **One Small Step:** Stop checking for the next 10 minutes / Write down my concern once, then return to what
+  I was doing / Follow the medical plan I already have / If appropriate, make one appointment instead of
+  repeatedly searching or checking / Do one normal activity for the next few minutes.
+
+## 16. Missing fear lists (now provided)
+
+- **BEING ALONE:** Something bad will happen while I'm alone / I'll panic and no one will be here /
+  I won't be able to handle how I feel / A sound means someone or something is there / I'll lose control /
+  I won't be able to get help if I need it.
+- **RELATIONSHIP / BREAKUP:** They won't reply / They're losing interest in me / They'll leave me /
+  I said or did something wrong / They're upset with me / The relationship is over /
+  I won't be able to handle the breakup or rejection.
+
+## 17. Dating / relationship split — CONFIRMED
+
+After choosing Dating / relationship: **"What is this about right now?"**
+→ "A date / meeting someone" | "A relationship / message / breakup" — each leads to its own pool.
+
+## 18. Smaller-step ladders
+
+Principle: **the step gets smaller but stays in the same direction**
+(Walk into the party → Walk to the entrance, never → Go home). If there is no good match,
+the user writes their own step.
+
+- SOCIAL: Walk in → Walk to the entrance → Stay nearby for 2 minutes · Say hello → Move closer to one person → Make eye contact
+- TEST: Start answering → Read the first question → Look at the first question · Work on the next question → Write one thing I know → Read it once
+- PERFORMANCE: Start → Get into position → Prepare to begin · Say the first line → Look at the first line → Get ready to say it
+- FLIGHT: Board → Walk to the gate → Stay at the gate · Sit and buckle up → Enter the plane → Stand in the boarding line
+- DATE: Walk in → Walk to the entrance → Arrive and stay there for a moment · Say hello → Approach → Make eye contact and smile
+- BEING ALONE: Stay 5 more minutes → 2 minutes → 1 minute · Continue a normal activity → Start it for 2 minutes → Begin the activity
+- RELATIONSHIP: Put the phone down for 10 → 5 → 2 minutes · Don't send another message right now → Wait 10 minutes → Write it without sending
+- INTERVIEW: Enter/join the interview → Go to the entrance/join the call → Stay ready to enter · Answer the first question → Listen to it → Say the first sentence
+- DIFFICULT CONVERSATION: Start the conversation → Say the first sentence → Prepare/approach · Say what I need to say → Say one part → Write down the first sentence
+- HEALTH: Stop checking for 10 → 5 → 2 minutes · Return to a normal activity → Do it for 2 minutes → Start it
+
+Implementation note: a step with no authored rung reduces only by lowering its own minute count
+(10 → 5 → 2 → 1); it is never swapped for a different action, and never suggests a bigger step.
+
+**Per the product owner, route content for the MVP is now closed — no further content additions for now.**

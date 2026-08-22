@@ -352,7 +352,9 @@ const SIT = {
   },
   relationship: {
     label:'Relationship / breakup', hint:'',
-    fears:['I sent a message and they haven’t answered','I think I said something wrong','I’ll be rejected'],
+    fears:['They won’t reply','They’re losing interest in me','They’ll leave me',
+      'I said or did something wrong','They’re upset with me','The relationship is over',
+      'I won’t be able to handle the breakup or rejection'],
     mine:['Whether I send a message','How I respond','What I do next','Who I talk to','How I take care of myself'],
     not:['Whether they reply','What they think','Whether they miss me','Their decision','How the relationship turns out'],
     steps:['Put the phone down for five minutes','Write the message without sending it yet','Do one normal thing I need to do'],
@@ -377,7 +379,9 @@ const SIT = {
   },
   alone: {
     label:'Being alone', hint:'evening alone, empty house, on my own…',
-    fears:[],
+    fears:['Something bad will happen while I’m alone','I’ll panic and no one will be here',
+      'I won’t be able to handle how I feel','A sound means someone or something is there',
+      'I’ll lose control','I won’t be able to get help if I need it'],
     mine:['Staying where I am','Doing a normal activity','Choosing what I do next','Checking a real concern once — not repeatedly'],
     not:['Every sound','Every anxious thought','How quickly the anxiety fades','Being 100% certain nothing could happen'],
     steps:['Stay another five minutes','Continue one normal activity','Move on without checking again'],
@@ -385,9 +389,19 @@ const SIT = {
   },
   health: {
     label:'Health / medical', hint:'symptoms, appointments, waiting for results…',
-    fears:[],
-    mine:GENERIC.mine, not:GENERIC.not, steps:GENERIC.steps,
-    want:'Deal with it one step at a time'
+    fears:['Something is seriously wrong with me','This feeling means something dangerous',
+      'The symptom will get worse','A test will show something bad',
+      'I won’t be able to cope if something is wrong'],
+    mine:['Describing what I’m feeling clearly','Following medical advice I’ve already received',
+      'Making an appropriate medical appointment if needed','Choosing whether to keep checking','What I do next'],
+    not:['Knowing with 100% certainty what every sensation means','How quickly a sensation goes away',
+      'Every sensation my body produces','What a test result will be','What might happen in the future'],
+    steps:['Stop checking for the next 10 minutes','Write down my concern once, then return to what I was doing',
+      'Follow the medical plan I already have','If appropriate, make one appointment instead of searching again',
+      'Do one normal activity for the next few minutes'],
+    want:'Deal with it one step at a time',
+    /* her rule: never tell the user a symptom is "just anxiety" or rule out a medical cause */
+    recognizeNote:'Anxiety can make sensations louder and harder to read. That doesn’t settle what any sensation means — it means anxiety is part of what you’re feeling right now.'
   },
   conflict: {
     label:'Difficult conversation', hint:'conflict, confrontation, saying a hard thing…',
@@ -600,14 +614,87 @@ function sample(arr, n){
   }
   return a.slice(0, n);
 }
-/* a smaller version of a step — only reductions the spec authorizes, else null (user writes their own) */
+/* ---- smaller-step ladders (her v3 chains: each rung smaller, same direction) ---- */
+const LADDERS = {
+  social: [
+    ['Walk in','Walk to the entrance','Stay nearby for 2 minutes'],
+    ['Say hello','Move closer to one person','Make eye contact']
+  ],
+  test: [
+    ['Start answering','Read the first question','Look at the first question'],
+    ['Work on the next question','Write one thing I know','Read it once']
+  ],
+  performance: [
+    ['Start','Get into position','Prepare to begin'],
+    ['Say the first line','Look at the first line','Get ready to say it']
+  ],
+  flight: [
+    ['Board','Walk to the gate','Stay at the gate'],
+    ['Sit and buckle up','Enter the plane','Stand in the boarding line']
+  ],
+  date: [
+    ['Walk in','Walk to the entrance','Arrive and stay there for a moment'],
+    ['Say hello','Approach','Make eye contact and smile']
+  ],
+  alone: [
+    ['Stay for 5 more minutes','Stay for 2 more minutes','Stay for 1 more minute'],
+    ['Continue a normal activity','Start it for 2 minutes','Begin the activity']
+  ],
+  relationship: [
+    ['Put the phone down for 10 minutes','Put the phone down for 5 minutes','Put the phone down for 2 minutes'],
+    ['Don’t send another message right now','Wait 10 minutes','Write it without sending']
+  ],
+  interview: [
+    ['Enter or join the interview','Go to the entrance or join the call','Stay ready to enter'],
+    ['Answer the first question','Listen to it','Say the first sentence']
+  ],
+  conflict: [
+    ['Start the conversation','Say the first sentence','Prepare, and approach them'],
+    ['Say what I need to say','Say one part of it','Write down the first sentence']
+  ],
+  health: [
+    ['Stop checking for the next 10 minutes','Stop checking for the next 5 minutes','Stop checking for the next 2 minutes'],
+    ['Return to a normal activity','Do it for 2 minutes','Start it']
+  ]
+};
+/* existing step wording → the rung it corresponds to on her ladders */
+const LADDER_ALIAS = {
+  social:       {'say hello to one person':'Say hello'},
+  performance:  {'take my position':'Get into position','say my first line':'Say the first line',
+                 'start the first minute':'Start'},
+  flight:       {'board the plane':'Board','sit down and buckle up':'Sit and buckle up'},
+  alone:        {'stay another five minutes':'Stay for 5 more minutes',
+                 'continue one normal activity':'Continue a normal activity'},
+  relationship: {'put the phone down for five minutes':'Put the phone down for 5 minutes',
+                 'write the message without sending it yet':'Write it without sending'},
+  interview:    {'enter the room or the call':'Enter or join the interview'},
+  conflict:     {'state clearly what i need to say':'Say what I need to say'},
+  health:       {'do one normal activity for the next few minutes':'Return to a normal activity'}
+};
+const NUMWORD = {one:1, two:2, five:5, ten:10};
+function norm(s){ return String(s).toLowerCase().replace(/[.,!?]/g,'').replace(/\s+/g,' ').trim(); }
+
+/* A smaller version of a step: an authored ladder rung, or the same step with fewer
+   minutes. Never a different action — a smaller step stays in the same direction.
+   null means we don't have one, and the user writes their own. */
 function smallerStep(action, sit){
-  if(/^walk in/i.test(action)) return 'Walk to the entrance';
-  if(/^stay\b.*\b(minutes?|activity)/i.test(action)) return 'Stay 2 more minutes';
-  if(/^board the plane$/i.test(action)) return 'Walk to the gate';
-  const steps = (SIT[sit] || SIT.other).steps;
-  const i = steps.indexOf(action);
-  if(i > 0) return steps[i - 1];
+  const chains = LADDERS[sit] || [];
+  const alias = (LADDER_ALIAS[sit] || {})[norm(action)];
+  const target = norm(alias || action);
+  for(const chain of chains){
+    const i = chain.findIndex(r => norm(r) === target);
+    if(i >= 0) return (i < chain.length - 1) ? chain[i + 1] : null;
+  }
+  const m = action.match(/\b(\d+|one|two|five|ten)\b(\s+more)?\s+minutes?\b/i);
+  if(m){
+    const cur = /^\d+$/.test(m[1]) ? +m[1] : NUMWORD[m[1].toLowerCase()];
+    const next = cur > 10 ? 10 : cur > 5 ? 5 : cur > 2 ? 2 : cur > 1 ? 1 : 0;
+    if(next) return action.replace(m[0], m[0].replace(m[1], String(next)))
+      .replace(/\b1 minutes\b/,'1 minute')
+      .replace(/\banother 1 minute\b/,'one more minute')
+      .replace(/\bfor the first 1 minute\b/,'for the first minute');
+    return null;
+  }
   return null;
 }
 
@@ -767,11 +854,11 @@ SCREENS.situation = () => {
 };
 
 SCREENS.dateSub = () => topbar('rising') +
-  '<h2>Which is it right now?</h2>' +
+  '<h2>What is this about right now?</h2>' +
   '<div class="spacer"></div>' +
   '<div class="stack" style="gap:10px">' +
   '<button class="btn btn-ghost btn-list" data-act="pickSituation" data-val="date">A date / meeting someone</button>' +
-  '<button class="btn btn-ghost btn-list" data-act="pickSituation" data-val="relationship">A relationship — a message, a reply, a breakup</button>' +
+  '<button class="btn btn-ghost btn-list" data-act="pickSituation" data-val="relationship">A relationship / message / breakup</button>' +
   '</div><div class="grow"></div>';
 
 SCREENS.freeText = () => topbar('rising') +
@@ -789,7 +876,9 @@ SCREENS.intensity = () => topbar('rising') +
 SCREENS.recognize = () => topbar('backIntensity') +
   '<div class="eyebrow">First, name it</div>' +
   '<h2>Your anxiety is up right now.</h2>' +
-  '<p class="sub" style="max-width:none">That can affect what you feel in your body — and what your mind is telling you. It doesn’t mean something dangerous is happening. It means anxiety is loud.</p>' +
+  '<p class="sub" style="max-width:none">That can affect what you feel in your body — and what your mind is telling you. ' +
+    ((SIT[S.pendingSit] && SIT[S.pendingSit].recognizeNote)
+      || 'It doesn’t mean something dangerous is happening. It means anxiety is loud.') + '</p>' +
   '<div class="mini-wrap">' +
     '<div class="breath-circle mini" id="mcircle"></div>' +
     '<div class="breath-phase mini" id="mphase">One slow breath, if you want.</div>' +
