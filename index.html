@@ -306,6 +306,23 @@ let sessions = store.get('anchor.sessions2', []);
 let scores   = store.get('anchor.pathScores', {});
 let meta     = store.get('anchor.meta', {});
 let pending  = store.get('anchor.pending', null);
+let beliefs  = store.get('anchor.beliefs', {});
+
+/* ---- CHECK THE STORY: thoughts that are a belief about yourself, not an event ---- */
+const SELF_BELIEFS = ['People don’t like me','I’m weird','I’m not good enough',
+  'Everyone notices something wrong with me','I always mess things up'];
+const SELF_BELIEF_RE = /(i’?m|i am|im)\s+(weird|stupid|boring|awkward|broken|too much|not (good )?enough|a failure|unlovable)|people (don’?t|do not) like me|nobody likes me|everyone (notices|thinks|can tell)|i always (mess|ruin|screw|fail)|they (all )?think i’?m|there'?s something wrong with me/i;
+function isSelfBelief(t){ return !!t && SELF_BELIEF_RE.test(t); }
+function beliefKey(t){ return String(t).toLowerCase().replace(/[^a-z’' ]/g,'').replace(/\s+/g,' ').trim(); }
+function seenBelief(t){ return beliefs[beliefKey(t)] || null; }
+function noteBelief(t, checked){
+  const k = beliefKey(t);
+  const b = beliefs[k] || {text:t, count:0, checked:0};
+  b.count++; if(checked) b.checked++;
+  b.lastAt = Date.now();
+  beliefs[k] = b;
+  store.set('anchor.beliefs', beliefs);
+}
 
 /* ============ situations (the aunt's categories & content pools — v3 spec) ============ */
 /* picker order; 'dating' expands to date|relationship via one sub-tap */
@@ -471,16 +488,19 @@ const PATHS = {
   loop:    ['loop','control','action'],
   control: ['control','action'],
   avoid:   ['avoid','action'],
-  body:    ['body','control','action']
+  body:    ['body','control','action'],
+  story:   ['story','action']
 };
 const PATH_LABEL = {
   fear:'Looking at the fear straight', loop:'Spotting the loop',
   control:'Sorting what’s in your control', avoid:'Finding one step forward',
-  body:'Starting with your body', fast:'Body first, then one step'
+  body:'Starting with your body', fast:'Body first, then one step',
+  story:'Checking the story'
 };
 const TOOL_EYEBROW = {
   body:'Body first', fear:'Look at it straight', loop:'Spot the loop',
-  control:'In my control — or not', avoid:'One step forward', action:'One small step'
+  control:'In my control — or not', avoid:'One step forward', action:'One small step',
+  story:'Check the story'
 };
 
 function composePath(key, intensity){
@@ -568,6 +588,7 @@ function finishRecord(){
   const rec = {
     at, situation: s.situation, note: s.note, identify: s.identify,
     fear: s.fear || null,
+    belief: s.belief || null, storyResult: s.storyResult || null,
     path: s.seq.slice(), before: s.intensity,
     after: (typeof s.after === 'number') ? s.after : null,
     action: s.action || null, stepDone: null, howWent: null
@@ -935,6 +956,7 @@ SCREENS.clarify = () => topbar('toIdentifyBack') +
   '<button class="btn btn-ghost btn-list" data-act="pickClarify" data-val="body">My body is going fast — heart, breath, shaking</button>' +
   '<button class="btn btn-ghost btn-list" data-act="pickClarify" data-val="loop">My head won’t slow down</button>' +
   '<button class="btn btn-ghost btn-list" data-act="pickClarify" data-val="control">I just feel stuck</button>' +
+  '<button class="btn btn-ghost btn-list" data-act="pickClarify" data-val="story">It’s more about how I see myself</button>' +
   '</div><div class="grow"></div>';
 
 /* ---- tool dispatcher ---- */
@@ -1026,7 +1048,11 @@ TOOL_VIEWS.fear = () => {
       '<h2 style="margin-bottom:0">' + esc(p.evenIf || EVEN_IF_DEFAULT) + '</h2>' +
     '</div>' +
     '<div class="grow"></div>' +
-    '<button class="btn btn-primary" data-act="toolDone">Continue</button>';
+    (isSelfBelief(d.fear) && !S.sess.seq.includes('story')
+      ? '<div class="stack">' +
+        '<button class="btn btn-primary" data-act="toolDone">Continue</button>' +
+        '<button class="btn btn-quiet" data-act="insertStory">That’s about me, not just today — check the story</button></div>'
+      : '<button class="btn btn-primary" data-act="toolDone">Continue</button>');
 };
 
 /* LOOP — spot the loop */
@@ -1059,8 +1085,11 @@ TOOL_VIEWS.loop = () => {
         ? '<div class="stack">' +
           '<button class="btn btn-primary" data-act="loopBridge" data-val="action">One small action instead</button>' +
           '<button class="btn btn-ghost" data-act="loopBridge" data-val="control">Sort what’s in my control</button>' +
+          '<button class="btn btn-ghost" data-act="loopBridge" data-val="story">This one’s about me — check the story</button>' +
           '<button class="btn btn-quiet" data-act="loopOkay">I’m okay now</button></div>'
-        : '<button class="btn btn-primary" data-act="toolDone">Continue</button>');
+        : '<div class="stack">' +
+          '<button class="btn btn-primary" data-act="toolDone">Continue</button>' +
+          '<button class="btn btn-quiet" data-act="insertStory">This one’s about me — check the story</button></div>');
   }
   return head + '<div class="grow"></div>' +
     '<div class="card" style="text-align:center">' +
@@ -1069,6 +1098,72 @@ TOOL_VIEWS.loop = () => {
     '</div>' +
     '<div class="grow"></div>' +
     '<button class="btn btn-primary" data-act="loopToFear">Look at it once</button>';
+};
+
+/* CHECK THE STORY — is this about what happened, or about an old belief?
+   Offered, never automatic. Never says the belief is untrue. Won't re-run on the
+   same thought without new information — that's the loop, not a new problem. */
+TOOL_VIEWS.story = () => {
+  const st = S.tool.step, d = S.tool.data;
+  const head = toolHeader();
+  if(st === 0){
+    const picks = SELF_BELIEFS.slice();
+    if(S.sess.fear && isSelfBelief(S.sess.fear) && !picks.includes(S.sess.fear)) picks.unshift(S.sess.fear);
+    return head + '<h2>Which thought about yourself is loudest?</h2>' +
+      '<p class="sub">The one that keeps showing up — not what happened, but what it says about you.</p>' +
+      chips(picks, d.belief ? [d.belief] : [], 'beliefPick') +
+      '<input type="text" id="belief-input" placeholder="…or say it your way" autocomplete="off">' +
+      '<div class="grow"></div><div class="spacer"></div>' +
+      '<button class="btn btn-primary" data-act="storyNext">Continue</button>';
+  }
+  if(st === 1){   /* already checked this one before */
+    return head + '<div class="note" style="margin-bottom:14px">“' + esc(d.belief) + '”</div>' +
+      '<h2>You’ve checked this one before. Has anything new actually happened since?</h2>' +
+      '<div class="grow"></div><div class="stack">' +
+      '<button class="btn btn-ghost" data-act="storyNew" data-val="no">No — same thought, another lap</button>' +
+      '<button class="btn btn-ghost" data-act="storyNew" data-val="yes">Yes, something actually new</button>' +
+      '</div><div class="grow"></div>';
+  }
+  if(st === 2){
+    return head + '<div class="note" style="margin-bottom:14px">“' + esc(d.belief) + '”</div>' +
+      '<div class="grow"></div>' +
+      '<div class="card">' +
+        '<h2 style="font-size:21px;margin-bottom:0">Is this thought based on something that happened right now — or could an old belief about yourself be shaping how you see it?</h2>' +
+      '</div>' +
+      '<div class="grow"></div>' +
+      '<button class="btn btn-primary" data-act="storyNext">Let’s check it</button>';
+  }
+  if(st === 3){
+    return head + '<h2>What facts seem to support this thought?</h2>' +
+      '<p class="sub">Things that actually happened — not what you assume they meant.</p>' +
+      '<textarea id="story-for" placeholder="e.g. nobody replied in the group chat today">' + esc(d.forFacts || '') + '</textarea>' +
+      '<div class="grow"></div><div class="spacer"></div>' +
+      '<button class="btn btn-primary" data-act="storyNext">Continue</button>';
+  }
+  if(st === 4){
+    return head + '<h2>And what facts don’t fit this thought?</h2>' +
+      '<p class="sub">Anything that happened that this thought doesn’t explain.</p>' +
+      '<textarea id="story-against" placeholder="e.g. two people asked me to come tonight">' + esc(d.againstFacts || '') + '</textarea>' +
+      '<div class="grow"></div><div class="spacer"></div>' +
+      '<button class="btn btn-primary" data-act="storyNext">Continue</button>';
+  }
+  if(st === 9){   /* no new information — back to the loop principle */
+    return head + '<div class="grow"></div>' +
+      '<div class="card" style="text-align:center">' +
+        '<h2>No new information — not a new problem to solve.</h2>' +
+        '<p class="sub" style="margin:10px auto 0">You’ve already looked at this one. Checking it again is the loop asking for reassurance, not a new answer.</p>' +
+      '</div>' +
+      '<div class="grow"></div>' +
+      '<button class="btn btn-primary" data-act="toolDone">One small step instead</button>';
+  }
+  return head + '<div class="grow"></div>' +
+    '<div class="card" style="text-align:center">' +
+      '<div class="eyebrow" style="margin-bottom:14px">The part worth keeping</div>' +
+      '<h2>A belief can feel true without being the whole picture.</h2>' +
+      '<p class="sub" style="margin:10px auto 0">Your mind is giving you one interpretation. The facts may tell a more complete story.</p>' +
+    '</div>' +
+    '<div class="grow"></div>' +
+    '<button class="btn btn-primary" data-act="toolDone">Continue</button>';
 };
 
 /* CONTROL — with gentle correction of wrong sorts */
@@ -1495,6 +1590,59 @@ const ACTS = {
     rerenderTool();
   },
 
+  /* check the story */
+  beliefPick(val, el){
+    document.querySelectorAll('[data-act=beliefPick]').forEach(c => c.classList.remove('on'));
+    el.classList.add('on');
+    S.tool.data.belief = el.textContent.replace(/^✓ /,'');
+  },
+  storyNext(){
+    const d = S.tool.data;
+    if(S.tool.step === 0){
+      const typed = readInput('belief-input');
+      if(safetyCheck(typed)) return;
+      if(typed) d.belief = typed;
+      if(!d.belief) return;
+      S.sess.belief = d.belief;
+      const prev = seenBelief(d.belief);
+      S.tool.step = (prev && prev.checked > 0) ? 1 : 2;
+      rerenderTool();
+      return;
+    }
+    if(S.tool.step === 3){
+      const t = readInput('story-for');
+      if(safetyCheck(t)) return;
+      d.forFacts = t;
+    }
+    if(S.tool.step === 4){
+      const t = readInput('story-against');
+      if(safetyCheck(t)) return;
+      d.againstFacts = t;
+      S.sess.storyResult = 'checked';
+      noteBelief(d.belief, true);
+    }
+    S.tool.step++;
+    rerenderTool();
+  },
+  storyNew(val){
+    const d = S.tool.data;
+    if(val === 'no'){
+      S.sess.storyResult = 'no_new_info';
+      noteBelief(d.belief, false);
+      S.tool.step = 9;
+    } else {
+      S.tool.step = 2;
+    }
+    rerenderTool();
+  },
+  /* offer it from another tool without forcing anyone through it.
+     After the check we go straight to the step — no further analysis. */
+  insertStory(){
+    const s = S.sess;
+    if(!s.seq.includes('story')) s.seq = s.seq.slice(0, s.i + 1).concat(['story','action']);
+    nextTool();
+  },
+
   /* loop */
   loopA(val){
     S.tool.step = (val === 'first') ? 3 : 1;
@@ -1511,7 +1659,9 @@ const ACTS = {
     nextTool();
   },
   loopBridge(val){
-    S.sess.seq = ['loop'].concat(val === 'control' ? ['control','action'] : ['action']);
+    S.sess.seq = ['loop'].concat(
+      val === 'control' ? ['control','action'] :
+      val === 'story'   ? ['story','action'] : ['action']);
     nextTool();
   },
   loopOkay(){
@@ -1595,9 +1745,9 @@ const ACTS = {
   /* erase */
   eraseAsk(){ go('erase'); },
   eraseYes(){
-    ['anchor.profile2','anchor.sessions2','anchor.pathScores','anchor.pending',
+    ['anchor.profile2','anchor.sessions2','anchor.pathScores','anchor.pending','anchor.beliefs',
      'anchor.profile','anchor.sessions','anchor.toolScores','anchor.meta'].forEach(store.del);
-    profile = null; sessions = []; scores = {}; meta = {}; pending = null;
+    profile = null; sessions = []; scores = {}; meta = {}; pending = null; beliefs = {};
     S = { screen:'welcome', ob:null, sess:null, tool:null, pendingSit:null, pendingNote:null,
       pendingIntensity:6, decide:null, lastStep:null, loopEntry:false, breathTimers:[] };
     go('welcome');
