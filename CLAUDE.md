@@ -18,5 +18,16 @@ Key internals (`index.html`):
 - localStorage: `anchor.profile2`, `anchor.sessions2`, `anchor.pathScores`, `anchor.pending`, `anchor.meta`.
 - Theme tokens defined three ways (bare `:root`, `prefers-color-scheme` guard, `[data-theme]`) — keep all in sync.
 
+- `stepsFor(sit, inLoop)` / `LOOP_STEPS` — the small step depends on situation **and** mechanism.
+  A loop about health must not be offered social actions; entry points that don't ask the
+  situation (JUST HELP ME NOW) use the generic pack rather than guessing one.
+
+`review/index.html` is the public content-review page (every situation × mechanism with verbatim
+copy, pools, ladders, shared screens, and a reassurance/avoidance/checking scan) at
+https://dorlev165.github.io/anchor/review/ — regenerate it whenever route copy changes.
+
 Verify changes by serving locally (`python3 -m http.server`) and driving flows in a browser
 (the top-level `ACTS` / `S` / `go` are reachable from the console).
+
+Hebrew for the product owner: never paste it from the terminal (RTL comes out mirrored) —
+write a file and `open -e` it so it can be copied from TextEdit.
