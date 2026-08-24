@@ -164,3 +164,27 @@ Implementation note: a step with no authored rung reduces only by lowering its o
 (10 → 5 → 2 → 1); it is never swapped for a different action, and never suggests a bigger step.
 
 **Per the product owner, route content for the MVP is now closed — no further content additions for now.**
+
+## 19. CHECK THE STORY (added 2026-08-24)
+
+Closes a gap from the original idea: whether an anxious thought rests on what is actually happening,
+or on an existing belief the person holds about themselves.
+
+**Offered, never automatic**, and only for self-belief / interpretation thoughts —
+"People don't like me", "I'm weird", "I'm not good enough",
+"Everyone notices something wrong with me", "I always mess things up".
+
+Flow: *"Is this thought based on something that happened right now — or could an old belief about
+yourself be shaping how you see it?"* → **What facts seem to support this thought?** →
+**What facts don't fit this thought?** → *"A belief can feel true without being the whole picture.
+Your mind is giving you one interpretation. The facts may tell a more complete story."*
+→ then straight to One Small Step. No further analysis.
+
+Rules:
+- **Never tell the user their belief is untrue** — we don't know that. The goal is to separate
+  fact, interpretation, and existing belief.
+- **It must not become repeated reassurance.** Same thought already checked and no new information
+  → back to the loop principle: *"No new information — not a new problem to solve."*
+- Not a route every user must pass through — a tool inside the existing engine.
+- Stores the chosen belief and the result of the check per session, and counts recurrences
+  (`anchor.beliefs`) so recurring self-belief patterns can be surfaced later.
