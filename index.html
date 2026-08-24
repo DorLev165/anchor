@@ -416,6 +416,30 @@ const SIT = {
 };
 const EVEN_IF_DEFAULT = 'Even if something I don’t want happens — I can handle what comes next.';
 
+/* Steps offered when the user is in a LOOP, crossed with the situation.
+   Per her routing note: social loop → small social actions; health loop → stop checking/
+   searching and return to an activity; dating/relationship loop → stop re-reading or sending
+   and return to something else; test loop → open the material and do one small task;
+   flight loop → continue to the next step of the flight. Situations she didn't name keep
+   their own steps. */
+const LOOP_STEPS = {
+  health: ['Stop checking for the next 10 minutes',
+    'Don’t search it again — go back to a normal activity',
+    'Write down my concern once, then return to what I was doing'],
+  relationship: ['Put the phone down for 10 minutes',
+    'Don’t re-read it or send another message — do something else',
+    'Do one normal thing I need to do'],
+  date: ['Put the phone down for 10 minutes',
+    'Don’t re-read it or send another message — do something else',
+    'Do one normal thing I need to do'],
+  test: ['Open my material and do one small task',
+    'Read the first question','Work on the next question']
+};
+function stepsFor(sit, inLoop){
+  const p = SIT[sit] || SIT.other;
+  return (inLoop && LOOP_STEPS[sit]) ? LOOP_STEPS[sit].slice() : p.steps.slice();
+}
+
 /* map free text ("Something else") to the closest situation */
 const TEXT_MAP = [
   ['health',       /\b(doctor|hospital|medical|symptom\w*|sick|illness|diagnos\w*|clinic|surgery|scan|biopsy)\b/i],
@@ -509,7 +533,7 @@ let S = {
   screen: meta.onboarded2 ? (dueFollowup() ? 'followup' : 'home') : 'welcome',
   ob: null, sess: null, tool: null,
   pendingSit: null, pendingNote: null, pendingIntensity: 6,
-  decide: null, lastStep: null,
+  decide: null, lastStep: null, loopEntry: false,
   breathTimers: []
 };
 
@@ -1109,9 +1133,10 @@ TOOL_VIEWS.avoid = () => {
 
 /* ACTION — one small step */
 TOOL_VIEWS.action = () => {
-  const d = S.tool.data, p = pack();
+  const d = S.tool.data;
   const head = toolHeader();
-  let opts = p.steps.slice();
+  const inLoop = S.sess.identify === 'loop' || S.sess.seq.includes('loop');
+  let opts = stepsFor(S.sess.situation, inLoop);
   const win = sessions.find(s => s.situation === S.sess.situation && s.stepDone === 'yes' && s.action);
   if(win && !opts.includes(win.action)) opts.unshift(win.action);
   return head + '<h2>What’s one small thing you can do now — that’s in your control?</h2>' +
@@ -1279,7 +1304,7 @@ function rerenderTool(){ go('tool'); }
 
 const ACTS = {
   /* nav */
-  goHome(){ go(dueFollowup() ? 'followup' : 'home'); },
+  goHome(){ S.loopEntry = false; go(dueFollowup() ? 'followup' : 'home'); },
   goProfile(){ go('profile'); },
   goHistory(){ go('history'); },
   goAbout(){ go('about'); },
@@ -1399,7 +1424,18 @@ const ACTS = {
       if(b) b.disabled = false;
     }, 10300));
   },
-  toIdentify(){ go('identify'); },
+  toIdentify(){
+    if(S.loopEntry){
+      S.loopEntry = false;
+      S.sess = {
+        situation: S.pendingSit, note: S.pendingNote || null, intensity: S.pendingIntensity,
+        identify: 'loop', seq: ['loop'], i: 0, action: null, after: null, controlMine: []
+      };
+      openTool('loop');
+      return;
+    }
+    go('identify');
+  },
   pickIdentify(val){
     if(val === 'unsure'){ go('clarify'); return; }
     startSession(val);
@@ -1408,22 +1444,19 @@ const ACTS = {
 
   /* home shortcuts */
   justHelp(){
-    S.pendingSit = sessions.length ? sessions[0].situation : 'other';
+    /* fast mode never asks the situation, so it must not guess one — a wrong guess
+       would offer steps that don't fit. Generic grounding steps only. */
+    S.pendingSit = 'other';
     S.pendingNote = null; S.pendingIntensity = 9;
     S.sess = {
-      situation: S.pendingSit, note: null, intensity: 9, identify: 'fast',
+      situation: 'other', note: null, intensity: 9, identify: 'fast',
       seq: ['body','action'], i: 0, action: null, after: null, controlMine: []
     };
     openTool('body');
   },
-  inLoop(){
-    S.pendingSit = sessions.length ? sessions[0].situation : 'other';
-    S.sess = {
-      situation: S.pendingSit, note: null, intensity: 6, identify: 'loop',
-      seq: ['loop'], i: 0, action: null, after: null, controlMine: []
-    };
-    openTool('loop');
-  },
+  /* I'M IN A LOOP: the mechanism is already known, but we still need the situation —
+     the loop's small step depends on it. Situation → intensity → recognize → loop. */
+  inLoop(){ S.loopEntry = true; go('situation'); },
 
   /* body */
   breatheAgain(){ const d = document.getElementById('bdone'); if(d) d.hidden = true; runBreathing(); },
@@ -1566,7 +1599,7 @@ const ACTS = {
      'anchor.profile','anchor.sessions','anchor.toolScores','anchor.meta'].forEach(store.del);
     profile = null; sessions = []; scores = {}; meta = {}; pending = null;
     S = { screen:'welcome', ob:null, sess:null, tool:null, pendingSit:null, pendingNote:null,
-      pendingIntensity:6, decide:null, lastStep:null, breathTimers:[] };
+      pendingIntensity:6, decide:null, lastStep:null, loopEntry:false, breathTimers:[] };
     go('welcome');
   }
 };
