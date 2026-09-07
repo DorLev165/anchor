@@ -1232,8 +1232,13 @@ TOOL_VIEWS.action = () => {
   const head = toolHeader();
   const inLoop = S.sess.identify === 'loop' || S.sess.seq.includes('loop');
   let opts = stepsFor(S.sess.situation, inLoop);
-  const win = sessions.find(s => s.situation === S.sess.situation && s.stepDone === 'yes' && s.action);
-  if(win && !opts.includes(win.action)) opts.unshift(win.action);
+  /* A step that worked before is only worth re-offering in the same kind of moment:
+     the step that ended a loop ("put the phone down") is the wrong thing to suggest to
+     someone standing outside the date itself. Keep it first, so the line below stays true. */
+  const wasLoop = s => s.identify === 'loop' || (s.path || []).includes('loop');
+  const win = sessions.find(s => s.situation === S.sess.situation && s.stepDone === 'yes' &&
+    s.action && wasLoop(s) === inLoop);
+  if(win) opts = [win.action].concat(opts.filter(o => o !== win.action));
   return head + '<h2>What’s one small thing you can do now — that’s in your control?</h2>' +
     (win ? '<p class="sub">The first one worked for you before.</p>' : '') +
     chips(opts, d.action ? [d.action] : [], 'actionPick') +
