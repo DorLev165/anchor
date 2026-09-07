@@ -1,7 +1,7 @@
 # Anchor
 
-Real-time anxiety self-help app (ages 14+, US). Single self-contained file: `index.html` — the only copy, edit it directly.
-(vanilla HTML/CSS/JS, no external resources, all state in localStorage). Deployed via GitHub Pages:
+Real-time anxiety self-help app (ages 14+, US). Single self-contained file: `index.html`
+(vanilla HTML/CSS/JS, no external resources, all state in localStorage) — the only copy, edit it directly. Deployed via GitHub Pages:
 https://dorlev165.github.io/anchor/ — push to `main` and Pages redeploys in ~1 minute.
 
 **`SPEC.md` is the binding product/clinical spec (from the product owner — Dor's aunt).**
